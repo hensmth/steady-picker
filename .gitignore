@@ -1,0 +1,23 @@
+# Binaries
+/steady
+cmd/steady/steady
+
+# Training artifacts
+*.bin
+!models/settings-v1.bin
+dist/
+.venv/
+.training/
+coverage.out
+
+# Scratch debug files
+/scratch/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store

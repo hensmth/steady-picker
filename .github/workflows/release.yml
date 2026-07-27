@@ -1,0 +1,87 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: 1.25.7
+          cache: true
+      - run: go test ./...
+      - run: go vet ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            output: steady-picker-linux-amd64
+          - goos: linux
+            goarch: arm64
+            output: steady-picker-linux-arm64
+          - goos: darwin
+            goarch: amd64
+            output: steady-picker-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output: steady-picker-darwin-arm64
+          - goos: windows
+            goarch: amd64
+            output: steady-picker-windows-amd64.exe
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: 1.25.7
+          cache: true
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: >-
+          go build -trimpath
+          -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}"
+          -o "dist/${{ matrix.output }}"
+          ./cmd/steady-picker
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.output }}
+          path: dist/${{ matrix.output }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Add model and checksums
+        run: |
+          cp models/settings-v1.bin dist/settings-v1.bin
+          cd dist
+          sha256sum steady-picker-* settings-v1.bin > SHA256SUMS
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          dist/*
+          --repo "${GITHUB_REPOSITORY}"
+          --title "SteadyPicker ${GITHUB_REF_NAME}"
+          --generate-notes
