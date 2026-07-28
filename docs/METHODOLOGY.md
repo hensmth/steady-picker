@@ -27,13 +27,20 @@ manifests record exact Hermes, provider, and model values. OpenAI's Services
 Agreement assigns customers responsibility for input rights and ownership of
 outputs; it does not replace source-license review.
 
-The corpus includes a pre-annotation temporal-complexity stratum so the locked
-test has enough progression and dependent-action examples to measure selective
-long decisions. The deterministic score counts rubric-derived temporal and
-action cues; it never assigns a semantic label. Candidate-pool sizes, the
-source-specific quotas, and the scoring definition are published. Pilot
-annotations used to validate prevalence are permanently excluded from model
-fitting, calibration, policy development, and locked evaluation.
+The semantic retraining corpus has 15,000 prompts: 4,000 governed non-locked
+rows from the earlier corpus, 10,000 fresh duplicate-excluded rows, and a
+separate 1,000-row replacement holdout. The fresh rows contain 4,000 broad,
+4,000 high-temporal-complexity, and 2,000 temporal-cue hard-negative prompts.
+The deterministic pre-annotation score never assigns a semantic label. Every
+prior corpus, pilot, audit, and inspected test prompt is an exclusion source.
+
+Three blind Sol Ultra passes produce only a duration label, action-beat count,
+and ordered-progression, transformation, and dependent-action flags. Label
+presentation and row order are independently permuted. A duration label enters
+training only on three-of-three agreement; disagreement is represented as
+ambiguous and expects the safe medium fallback. Usage evidence, checkpoints,
+provider, model, effort, revisions, hashes, exclusions, and membership are
+recorded without retaining free-form reasoning.
 
 - https://huggingface.co/datasets/WenhaoWang/VideoUFO
 - https://github.com/poloclub/diffusiondb
@@ -48,10 +55,24 @@ Datasets*; model documentation follows *Model Cards for Model Reporting*.
 
 ## Selection and calibration
 
+The 14,000 non-locked rows are cluster-grouped into 10,000 training, 1,000
+probability-calibration, 1,000 conformal-calibration, and 2,000
+policy-development rows. A sealed validator reveals only whether the replacement
+holdout has sufficient unanimous short/long support.
+
+An Apache-2.0 `paraphrase-MiniLM-L3-v2` encoder is adapted with SetFit-style
+contrastive pairs and used only as a teacher. The shipped student is a
+purpose-built two-layer Transformer with hidden size 128, four attention heads,
+FFN size 512, an 8,192-token WordPiece vocabulary, a 96-token maximum, separate
+short/long heads, and temporal auxiliary heads. Per-output-channel INT8 weights
+and float32 layer normalization keep inference self-contained in pure Go.
+
 All hyperparameter selection occurs in five grouped folds inside the training
-split. Candidate ordering is fixed; the best mean cost-weighted selective
-utility must first satisfy short/long precision constraints. Ties resolve by
-lower fold variance, then smaller artifact.
+split. The fixed 16-candidate grid covers learning rate, long-class weight,
+contrastive-loss weight, and focal-loss strength. Candidate ordering is fixed;
+the best cost-weighted selective utility must first satisfy pooled short/long
+precision, minimum accepted counts, and per-fold support constraints. Ties
+resolve by lower fold variance and then candidate order.
 
 After selection, temperature scaling uses a dedicated probability-calibration
 split. Class-specific conformal quantiles use a separate calibration split.
@@ -70,9 +91,13 @@ prediction-set literature.
 ## Engineering and supply chain
 
 The artifact parser validates all lengths and metadata before allocation and
-rejects artifacts over 64 MiB. Inference uses immutable ordinary Go slices and
-independent pooled workspaces. The release target is zero steady-state
-allocations, under 50 microseconds, and an embedded artifact below 10 MiB.
+rejects artifacts over 64 MiB. Format v5 fixes the complete semantic
+architecture, tokenizer, quantization, provenance, and calibration layout while
+retaining v3/v4 loading. Inference uses immutable ordinary Go slices and
+independent pooled workspaces, with no ONNX runtime, Python, CGO, network access,
+or external model file. The release target is zero steady-state allocations,
+at most 30 milliseconds p95 on the deployment-class CPU, and an
+executable/model below 32 MiB.
 
 Race and fuzz testing follow the Go project's guidance:
 
