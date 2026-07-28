@@ -8,6 +8,7 @@ import collections
 import hashlib
 import json
 import random
+import urllib.request
 from pathlib import Path
 
 from build_corpus import (
@@ -70,6 +71,19 @@ def main() -> None:
     parser.add_argument("--videoufo-cache-only", action="store_true")
     parser.add_argument("--exclude", type=Path, action="append", default=[])
     args = parser.parse_args()
+
+    for dataset, expected in (
+        ("WenhaoWang/VideoUFO", VIDEOUFO_REVISION),
+        ("poloclub/diffusiondb", DIFFUSIONDB_REVISION),
+    ):
+        with urllib.request.urlopen(
+            f"https://huggingface.co/api/datasets/{dataset}", timeout=30
+        ) as response:
+            revision = json.load(response)["sha"]
+        if revision != expected:
+            raise RuntimeError(
+                f"{dataset} revision changed; review and pin before rebuilding"
+            )
 
     labelled = {
         int(row["id"]): row for row in read_rows(args.existing_labelled)

@@ -8,7 +8,6 @@ import collections
 import hashlib
 import itertools
 import json
-import os
 import random
 import subprocess
 import sys
@@ -546,9 +545,17 @@ def main() -> None:
             json.dumps(vocabulary, ensure_ascii=False) + "\n", encoding="utf-8"
         )
     tokenizer = WordPiece(vocabulary)
+    tokenizer.cache(development)
+    tokens_by_id = {
+        int(row["id"]): row["_semantic_token_ids"] for row in development
+    }
+    for split_rows in splits.values():
+        for row in split_rows:
+            row["_semantic_token_ids"] = tokens_by_id[int(row["id"])]
     device = torch.device(
         "mps" if torch.backends.mps.is_available() else "cpu"
     )
+    torch.use_deterministic_algorithms(True)
     teacher = fit_teacher(
         splits["train"], args.output_dir, str(device), args.seed
     )

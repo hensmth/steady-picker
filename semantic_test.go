@@ -1,6 +1,9 @@
 package steady
 
 import (
+	"encoding/binary"
+	"math"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -43,6 +46,21 @@ func TestSemanticV5RejectsMalformedPayload(t *testing.T) {
 	if _, err := LoadBytes(artifact[:len(artifact)-1]); err == nil ||
 		!strings.Contains(err.Error(), "payload") {
 		t.Fatalf("truncated v5 error = %v", err)
+	}
+}
+
+func TestSemanticV5RejectsNonFiniteQuantizationScale(t *testing.T) {
+	artifact := semanticTestArtifact(t, []float32{8, -8})
+	metadataLength := int(binary.LittleEndian.Uint32(artifact[8:12]))
+	payloadStart := modelHeaderSize + metadataLength
+	firstScale := payloadStart + semanticVocabSize*semanticHidden
+	binary.LittleEndian.PutUint32(
+		artifact[firstScale:],
+		math.Float32bits(float32(math.NaN())),
+	)
+	if _, err := LoadBytes(artifact); err == nil ||
+		!strings.Contains(err.Error(), "numeric") {
+		t.Fatalf("non-finite v5 error = %v", err)
 	}
 }
 
@@ -115,6 +133,27 @@ func BenchmarkSemanticV5Prediction(b *testing.B) {
 		if _, _, ok := model.pickDecision("a bird hops once"); !ok {
 			b.Fatal("semantic decision was not accepted")
 		}
+	}
+}
+
+func BenchmarkExternalSemanticV5Prediction(b *testing.B) {
+	path := os.Getenv("STEADY_BENCH_MODEL")
+	if path == "" {
+		b.Skip("STEADY_BENCH_MODEL is not set")
+	}
+	model, err := Load(path)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if model.Metadata().ArtifactFormat != 5 {
+		b.Fatal("external benchmark requires artifact format v5")
+	}
+	prompt := "First a seed sprouts, then grows, and finally blooms."
+	_, _, _ = model.pickDecision(prompt)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_, _, _ = model.pickDecision(prompt)
 	}
 }
 

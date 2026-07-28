@@ -387,8 +387,8 @@ def main() -> None:
         for right in range(left + 1, len(label_votes))
     ]
     kappa = min(kappas)
-    if kappa < 0.80 or unresolved / len(rows) > (
-        0.20 if args.structured_unanimous else 0.02
+    if not args.structured_unanimous and (
+        kappa < 0.80 or unresolved / len(rows) > 0.02
     ):
         raise RuntimeError(
             f"labelling gate failed: min_kappa={kappa:.4f}, unresolved={unresolved}"

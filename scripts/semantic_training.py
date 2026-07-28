@@ -149,7 +149,11 @@ class WordPiece:
         return output
 
     def batch(self, texts: list[str], device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
-        encoded = [self.encode(text) for text in texts]
+        return self.batch_ids([self.encode(text) for text in texts], device)
+
+    def batch_ids(
+        self, encoded: list[list[int]], device: torch.device
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         width = max(len(row) for row in encoded)
         ids = torch.zeros((len(encoded), width), dtype=torch.long, device=device)
         mask = torch.zeros((len(encoded), width), dtype=torch.bool, device=device)
@@ -157,6 +161,21 @@ class WordPiece:
             ids[index, : len(row)] = torch.tensor(row, dtype=torch.long, device=device)
             mask[index, : len(row)] = True
         return ids, mask
+
+    def cache(self, rows: list[dict]) -> None:
+        for row in rows:
+            row["_semantic_token_ids"] = self.encode(row["prompt"])
+
+    def batch_rows(
+        self, rows: list[dict], device: torch.device
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.batch_ids(
+            [
+                row.get("_semantic_token_ids") or self.encode(row["prompt"])
+                for row in rows
+            ],
+            device,
+        )
 
 
 def _ascii_word(value: int) -> bool:
@@ -261,7 +280,7 @@ def train_student(
         for offset in range(0, len(order), batch_size):
             indices = order[offset : offset + batch_size]
             batch = [rows[int(index)] for index in indices]
-            ids, mask = tokenizer.batch([row["prompt"] for row in batch], device)
+            ids, mask = tokenizer.batch_rows(batch, device)
             hidden, duration_logits, auxiliary_logits = model(ids, mask)
             targets = torch.tensor(
                 [
@@ -355,7 +374,7 @@ def predict(
     with torch.no_grad():
         for offset in range(0, len(rows), batch_size):
             batch = rows[offset : offset + batch_size]
-            ids, mask = tokenizer.batch([row["prompt"] for row in batch], device)
+            ids, mask = tokenizer.batch_rows(batch, device)
             _, logits, _ = model(ids, mask)
             output.append(logits.float().cpu().numpy())
     return np.concatenate(output)

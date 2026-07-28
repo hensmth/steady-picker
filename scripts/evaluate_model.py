@@ -15,8 +15,30 @@ LABEL_DURATION = {"short": 2, "medium": 4, "long": 6}
 def labelled_rows(path: Path) -> list[dict]:
     rows = []
     for index, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
-        label, prompt = line.split(" ", 1)
-        rows.append({"id": index, "label": label.removeprefix("__label__"), "prompt": prompt})
+        if line.startswith("{"):
+            value = json.loads(line)
+            if int(value["id"]) != index:
+                raise RuntimeError("labelled JSONL changed canonical row order")
+            rows.append(
+                {
+                    "id": index,
+                    "label": (
+                        "unresolved"
+                        if value.get("unresolved", False)
+                        else value["final_label"]
+                    ),
+                    "prompt": value["prompt"],
+                }
+            )
+        else:
+            label, prompt = line.split(" ", 1)
+            rows.append(
+                {
+                    "id": index,
+                    "label": label.removeprefix("__label__"),
+                    "prompt": prompt,
+                }
+            )
     return rows
 
 
@@ -35,6 +57,14 @@ def predict(binary: Path, model: Path, rows: list[dict]) -> list[dict]:
     predictions = [json.loads(line) for line in result.stdout.splitlines()]
     if len(predictions) != len(rows):
         raise RuntimeError("predictor changed row count")
+    for prediction in predictions:
+        if (
+            prediction.get("model_version") != "settings-v2"
+            or prediction.get("profile_version") != "2"
+            or prediction.get("policy_version") != "quota-safe-v2"
+            or len(prediction.get("artifact_sha256", "")) != 64
+        ):
+            raise RuntimeError("predictor returned invalid v5 provenance")
     return predictions
 
 

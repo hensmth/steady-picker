@@ -396,6 +396,12 @@ func BenchmarkPickSettingsV4(b *testing.B) {
 func FuzzLoadBytes(f *testing.F) {
 	_, seed := testModel(f)
 	f.Add(seed)
+	v5Header := make([]byte, modelHeaderSize+2)
+	binary.LittleEndian.PutUint32(v5Header[:4], modelMagic)
+	binary.LittleEndian.PutUint32(v5Header[4:8], modelVersion)
+	binary.LittleEndian.PutUint32(v5Header[8:12], 1)
+	binary.LittleEndian.PutUint64(v5Header[16:24], 1)
+	f.Add(v5Header)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = LoadBytes(data)
 	})
