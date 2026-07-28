@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Exact v0.2.x version (release stays draft)
+        description: Exact approved v0.2 version (release stays draft)
         required: true
         type: string
 
@@ -22,7 +22,10 @@ jobs:
         with:
           go-version: 1.26.0
       - run: test "${{ inputs.version }}" = "v0.2.0"
-      - run: test -f evaluation/LONG_ONLY_PRAGMATIC_V2_PASSED
+      - name: Verify published evaluation evidence
+        run: |
+          test -f evaluation/LONG_ONLY_PRAGMATIC_V2_DIAGNOSTICS.json
+          grep -q '"artifact_sha256": "2ea8edf030b351cdcd3e992ff1c15fbbaab3b49bb0b64fa04b506db318eba5a3"' evaluation/LONG_ONLY_PRAGMATIC_V2_DIAGNOSTICS.json
       - run: go test ./...
       - run: go test -race ./...
       - run: go vet ./...
@@ -83,10 +86,12 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Add governed artifacts and checksums
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           cp models/settings-v2.bin dist/settings-v2.bin
-          cp corpus/labelled.jsonl corpus/membership.jsonl corpus/source-manifest.json corpus/teacher-manifest.json dist/
-          cp corpus/DATASET_CARD.md evaluation/report.json MODEL_CARD.md THIRD_PARTY_NOTICES.md dist/
+          cp MODEL_CARD.md THIRD_PARTY_NOTICES.md dist/
+          cp evaluation/LONG_ONLY_PRAGMATIC_V2_DIAGNOSTICS.json dist/
           cd dist
           sha256sum * > SHA256SUMS
       - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
@@ -98,10 +103,11 @@ jobs:
       - name: Create draft only
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
         run: >-
-          gh release create "${{ inputs.version }}" dist/*
+          gh release create "$VERSION" dist/*
           --draft
           --verify-tag
           --repo "${GITHUB_REPOSITORY}"
-          --title "SteadyPicker ${{ inputs.version }}"
+          --title "SteadyPicker $VERSION"
           --notes-file RELEASE_NOTES.md

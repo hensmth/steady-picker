@@ -60,7 +60,8 @@ The frozen artifact accepted 8 of 1,000 sealed examples, all 8 correct. It
 therefore passed point precision and produced zero learned short decisions,
 but failed the required minimum of 20 accepted examples. FETV and independent
 audit were not run after that terminal gate failure. No release result is
-claimed, the artifact remains unembedded, and the pass marker does not exist.
+claimed from those omitted evaluations. The artifact is nevertheless shipped
+in v0.2.0 with these limitations disclosed.
 
 ## Cost and limitations
 

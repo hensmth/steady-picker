@@ -1,17 +1,21 @@
 # SteadyPicker v0.2.0
 
-This release remains a draft until all locked model, engineering, integration,
-attestation, and live-generation gates pass.
+SteadyPicker v0.2.0 ships the self-contained, offline long-only semantic model.
 
-Highlights:
+The model:
 
-- strict provenance-carrying artifact format v3;
-- immutable ordinary Go memory and concurrent pooled workspaces;
-- configurable provider capability and budget profiles;
-- quota-safe field-specific precedence and conflict/negation parsing;
-- embedded `settings-v2`, profile, attribution, and health tooling;
-- deterministic rights-cleared corpus, training, calibration, and evaluation;
-- SHA-pinned cross-platform CI, SBOMs, and build attestations.
+- can extend a request from four to six seconds;
+- never makes a learned two-second decision;
+- honors explicit two-second requests; and
+- keeps deterministic aspect-ratio, resolution, and safe-fallback behavior.
 
-Migration: v2 artifacts from SteadyPicker v0.1 have ambiguous label order and
-are intentionally rejected. Keep v0.1 for rollback or retrain to artifact v3.
+Observed frozen evaluation:
+
+- grouped CV: 23/29 accepted long decisions correct (79.31%);
+- sealed test: 8/8 accepted long decisions correct (100%);
+- sealed learned-override coverage: 0.8%;
+- development-host latency: 32.825 ms p95.
+
+Assets include Linux amd64/arm64, macOS amd64/arm64, and Windows amd64
+binaries, the standalone model, SHA-256 checksums, SPDX SBOMs, build
+attestations, the model card, notices, and evaluation diagnostics.

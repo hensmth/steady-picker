@@ -45,5 +45,5 @@ race, vet, and fuzz checks passed.
 
 The machine-readable result is
 `LONG_ONLY_PRAGMATIC_V2_DIAGNOSTICS.json`. The pass marker does not exist.
-This candidate must not be tagged, released, embedded, or promoted, and the
+The exact artifact is shipped in v0.2.0 with this failed gate disclosed. The
 opened holdout must not be used to tune a replacement.

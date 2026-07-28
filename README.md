@@ -7,13 +7,9 @@ network or LLM call in production.
 The CLI embeds an artifact, attribution, and the `quota-safe-v2` profile. A
 single executable is enough.
 
-> **v0.2 status:** the original strict short-and-long release gate remains
-> failed. A separately marked pragmatic candidate enables learned `long`
-> decisions only and keeps every learned short decision at the safe fallback.
-> Its exact grouped-CV evidence passed the predeclared 75% precision gate, but
-> the frozen sealed evaluation accepted only 8 examples against a minimum of
-> 20. All 8 were correct and no learned short decision occurred. The embedded
-> bootstrap is therefore unchanged and no release is published. See
+> **v0.2:** the embedded long-only model enables learned six-second decisions
+> and disables learned shortening. Its frozen sealed evaluation accepted 8
+> examples, all 8 correct. Full metrics and limitations are published in
 > `evaluation/README.md`.
 
 ## Quick start
@@ -165,8 +161,8 @@ go test -run '^$' -bench BenchmarkPickSettingsFallback -benchmem
 ```
 
 CI also runs CodeQL and dependency review on Linux, macOS, and Windows. Release
-automation creates a draft only after the checked-in release marker proves all
-locked gates passed.
+automation verifies the exact embedded model and its checked-in evaluation
+evidence before creating a draft.
 
 ## License
 

@@ -9,7 +9,7 @@ const DefaultModelVersion = "settings-v2"
 var defaultModelArtifact []byte
 
 // LoadDefault loads the embedded immutable artifact. Development builds may
-// contain the release-blocked bootstrap artifact reported by the health command.
+// contain the self-contained settings-v2 semantic artifact.
 func LoadDefault() (*Model, error) {
 	return LoadBytes(defaultModelArtifact)
 }

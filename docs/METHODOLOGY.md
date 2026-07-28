@@ -115,8 +115,8 @@ Race and fuzz testing follow the Go project's guidance:
 - https://go.dev/doc/tutorial/fuzz
 
 GitHub Actions are pinned to full commit SHAs. Draft releases carry checksums,
-SPDX SBOMs, and build/model attestations. Publication remains manual and
-blocked unless the locked release marker exists.
+SPDX SBOMs, build/model attestations, and the exact evaluation evidence.
+Publication remains manual.
 
 - https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
 - https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases

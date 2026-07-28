@@ -33,7 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Mutable label state, lifecycle-dependent `Close`, shared scratch memory,
-  unsafe code, mmap, and third-party runtime dependencies.
+unsafe code, mmap, and third-party runtime dependencies.
+
+## [0.2.0] — 2026-07-28
+
+### Added
+
+- Embedded long-only semantic model.
+- Cross-platform release binaries, standalone model, checksums, SBOMs, and
+  attestations.
+
+### Safety
+
+- Learned short decisions are disabled.
+- Evaluation coverage and latency measurements are disclosed with the release.
 
 ## [0.1.0] — 2026-07-28
 

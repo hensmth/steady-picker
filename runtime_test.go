@@ -324,12 +324,14 @@ func TestTrainingIsByteDeterministic(t *testing.T) {
 	}
 }
 
-func TestDefaultModelIsV3AndSelfContained(t *testing.T) {
+func TestDefaultModelIsV5AndSelfContained(t *testing.T) {
 	model, err := LoadDefault()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model.Metadata().ArtifactFormat != 3 || len(model.Metadata().ArtifactSHA256) != 64 {
+	if model.Metadata().ArtifactFormat != 5 ||
+		model.Metadata().DecisionPolicy != DecisionPolicyLongOnlyPragmaticV2 ||
+		len(model.Metadata().ArtifactSHA256) != 64 {
 		t.Fatalf("unexpected embedded metadata: %+v", model.Metadata())
 	}
 	if len(defaultModelArtifact) >= 10<<20 {
@@ -340,8 +342,11 @@ func TestDefaultModelIsV3AndSelfContained(t *testing.T) {
 func TestCLIHealthAndNDJSON(t *testing.T) {
 	health := exec.Command("go", "run", "./cmd/steady-picker", "health")
 	healthOutput, err := health.Output()
-	if err != nil || !bytes.Contains(healthOutput, []byte(`"status":"bootstrap"`)) ||
-		!bytes.Contains(healthOutput, []byte(`"ready":false`)) {
+	if err != nil || !bytes.Contains(healthOutput, []byte(`"status":"ok"`)) ||
+		!bytes.Contains(healthOutput, []byte(`"ready":true`)) ||
+		!bytes.Contains(healthOutput, []byte(
+			`"decision_policy":"long-only-pragmatic-v2"`,
+		)) {
 		t.Fatalf("health failed: %v %s", err, healthOutput)
 	}
 	command := exec.Command("go", "run", "./cmd/steady-picker", "predict")
