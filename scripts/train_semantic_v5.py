@@ -30,6 +30,7 @@ from semantic_training import (
     conformal_quantiles,
     export_v5,
     fit_temperatures,
+    positive_class_weights,
     predict,
     probabilities,
     quantized_copy,
@@ -43,7 +44,7 @@ TEACHER_REVISION = "4ca70771034acceecb2e72475f72050fcdde4ddc"
 GRID = list(
     itertools.product(
         (0.0003, 0.0007),
-        (2.0, 4.0),
+        (0.75, 1.25),
         (0.25, 0.5),
         (1.0, 2.0),
     )
@@ -435,7 +436,7 @@ def cv_candidate(
         "candidate": candidate_index,
         "config": {
             "learning_rate": values[0],
-            "long_weight": values[1],
+            "long_weight_multiplier": values[1],
             "contrastive_weight": values[2],
             "focal_gamma": values[3],
         },
@@ -659,7 +660,7 @@ def main() -> None:
         tokenizer,
         TrainConfig(
             config["learning_rate"],
-            config["long_weight"],
+            config["long_weight_multiplier"],
             config["contrastive_weight"],
             config["focal_gamma"],
             epochs=args.final_epochs,
@@ -691,6 +692,9 @@ def main() -> None:
     )
     torch.save(model.state_dict(), args.output_dir / "frozen-student.pt")
     source_digest = hashlib.sha256(args.source_manifest.read_bytes()).hexdigest()
+    class_weights = positive_class_weights(
+        train_rows, config["long_weight_multiplier"]
+    )
     metadata = {
         "epochs": args.final_epochs,
         "learning_rate": config["learning_rate"],
@@ -699,13 +703,7 @@ def main() -> None:
         "seed": args.seed,
         "source_manifest_sha256": source_digest,
         "training_code_commit": args.training_code_commit,
-        "positive_class_weights": [
-            float(
-                (len(train_rows) - sum(row_label(row) == "short" for row in train_rows))
-                / max(1, sum(row_label(row) == "short" for row in train_rows))
-            ),
-            config["long_weight"],
-        ],
+        "positive_class_weights": list(class_weights),
         "teacher_encoder": f"{TEACHER_ID}@{TEACHER_REVISION}",
         "training_provider": teacher_manifest["provider"],
         "training_model": teacher_manifest["model"],

@@ -247,11 +247,26 @@ class SemanticStudent(nn.Module):
 @dataclass(frozen=True)
 class TrainConfig:
     learning_rate: float
-    long_weight: float
+    long_weight_multiplier: float
     contrastive_weight: float
     focal_gamma: float
     epochs: int
     seed: int
+
+
+def positive_class_weights(
+    rows: list[dict], long_weight_multiplier: float
+) -> tuple[float, float]:
+    short_positive = max(1, sum(row.get("final_label") == "short" for row in rows))
+    long_positive = max(1, sum(row.get("final_label") == "long" for row in rows))
+    return (
+        min(20.0, (len(rows) - short_positive) / short_positive),
+        min(
+            40.0,
+            ((len(rows) - long_positive) / long_positive)
+            * long_weight_multiplier,
+        ),
+    )
 
 
 def train_student(
@@ -272,8 +287,9 @@ def train_student(
     )
     rng = np.random.default_rng(config.seed)
     order = np.arange(len(rows))
-    short_positive = max(1, sum(row.get("final_label") == "short" for row in rows))
-    short_weight = min(20.0, (len(rows) - short_positive) / short_positive)
+    short_weight, long_weight = positive_class_weights(
+        rows, config.long_weight_multiplier
+    )
     for _ in range(config.epochs):
         rng.shuffle(order)
         model.train()
@@ -299,7 +315,7 @@ def train_student(
             )
             pt = probability * targets + (1 - probability) * (1 - targets)
             positive_weights = torch.tensor(
-                [short_weight, config.long_weight],
+                [short_weight, long_weight],
                 dtype=torch.float32,
                 device=device,
             )
