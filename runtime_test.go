@@ -40,6 +40,47 @@ func testModel(t testing.TB) (*Model, []byte) {
 	return loaded, data
 }
 
+func testV4Model(t testing.TB) (*Model, []byte) {
+	t.Helper()
+	const bucket = 64
+	const dimension = 8
+	m := &Model{
+		table:            make([]float32, bucket*dimension),
+		weights:          make([]float32, 2*(dimension+temporalFeatureCount)),
+		bias:             []float32{5, -5},
+		temperatures:     []float32{1, 1},
+		quantiles:        []float32{1, 0, 1, 0},
+		thresholds:       []float32{0.8, 0.8},
+		bucket:           bucket,
+		dim:              dimension,
+		minN:             3,
+		maxN:             5,
+		wordMinN:         1,
+		wordMaxN:         2,
+		temporalFeatures: temporalFeatureCount,
+		metadata: Metadata{
+			ArtifactFormat: 4, ModelID: "settings-v2", Task: "video-duration-selection",
+			Labels: []string{"short", "medium", "long"}, PolicyCompatibility: ProfileQuotaSafeV2,
+			MinN: 3, MaxN: 5, Bucket: bucket, Dimension: dimension, Epochs: 1,
+			LearningRate: 0.01, L2: 0.0001, Alpha: 0.05, Seed: 42,
+			SourceManifestSHA256: strings.Repeat("c", 64), TrainingCodeCommit: "test-v4",
+			ModelFamily: "dual-head-embedding-v1", Heads: []string{"short", "long"},
+			FeatureSchema: "hashed-char-word-embedding+temporal-v1",
+			WordMinN:      1, WordMaxN: 2, TemporalFeatures: temporalFeatureCount,
+			PositiveClassWeights: []float64{1, 1},
+		},
+	}
+	data, err := marshalModel(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadBytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return loaded, data
+}
+
 func TestArtifactRoundTripAndDerivedIdentity(t *testing.T) {
 	model, data := testModel(t)
 	if model.Metadata().ArtifactSHA256 == "" || model.Metadata().ModelID != "settings-v2" {
@@ -52,6 +93,19 @@ func TestArtifactRoundTripAndDerivedIdentity(t *testing.T) {
 	reloaded, err := Load(path)
 	if err != nil || reloaded.Metadata().ArtifactSHA256 != model.Metadata().ArtifactSHA256 {
 		t.Fatalf("reload: %v %+v", err, reloaded)
+	}
+}
+
+func TestV4ArtifactRoundTripAndDecision(t *testing.T) {
+	model, data := testV4Model(t)
+	if model.Metadata().ArtifactFormat != 4 || len(data) >= 32<<20 {
+		t.Fatalf("unexpected v4 artifact: %+v bytes=%d", model.Metadata(), len(data))
+	}
+	result, err := PickSettings(model, QuotaSafeProfile(), PickRequest{
+		Prompt: "one quick wink", Mode: TextToVideo,
+	})
+	if err != nil || result.Duration != 2 || result.DurationSource != "model" {
+		t.Fatalf("v4 decision: %+v %v", result, err)
 	}
 }
 
@@ -203,6 +257,29 @@ func TestConcurrentSharedModel(t *testing.T) {
 	wg.Wait()
 }
 
+func TestConcurrentSharedV4Model(t *testing.T) {
+	model, _ := testV4Model(t)
+	const goroutines = 100
+	const each = 1000
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for worker := 0; worker < goroutines; worker++ {
+		go func() {
+			defer wg.Done()
+			for i := 0; i < each; i++ {
+				result, err := PickSettings(model, QuotaSafeProfile(), PickRequest{
+					Prompt: "one quick wink", Mode: TextToVideo,
+				})
+				if err != nil || result.Duration != 2 {
+					t.Errorf("v4 prediction failed: %+v %v", result, err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func TestTrainingIsByteDeterministic(t *testing.T) {
 	dir := t.TempDir()
 	rows := []byte(
@@ -231,6 +308,14 @@ func TestTrainingIsByteDeterministic(t *testing.T) {
 		data, err := os.ReadFile(cfg.Output)
 		if err != nil {
 			t.Fatal(err)
+		}
+		model, err := LoadBytes(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if model.Metadata().ArtifactFormat != 4 ||
+			model.Metadata().ModelFamily != "dual-head-embedding-v1" {
+			t.Fatalf("unexpected trained metadata: %+v", model.Metadata())
 		}
 		return data
 	}
@@ -284,6 +369,22 @@ func BenchmarkPickSettingsFallback(b *testing.B) {
 	model, _ := testModel(b)
 	profile := QuotaSafeProfile()
 	request := PickRequest{Prompt: "a person walks naturally", Mode: TextToVideo}
+	b.ReportAllocs()
+	for range b.N {
+		if _, err := PickSettings(model, profile, request); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkPickSettingsV4(b *testing.B) {
+	model, _ := testV4Model(b)
+	profile := QuotaSafeProfile()
+	request := PickRequest{
+		Prompt: "A seed sprouts, grows into a tree, and finally blooms.",
+		Mode:   TextToVideo,
+	}
+	_, _ = PickSettings(model, profile, request)
 	b.ReportAllocs()
 	for range b.N {
 		if _, err := PickSettings(model, profile, request); err != nil {

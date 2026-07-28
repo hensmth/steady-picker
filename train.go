@@ -29,12 +29,14 @@ type TrainConfig struct {
 	Seed                        uint64
 	SourceManifestSHA256        string
 	TrainingCodeCommit          string
+	PositiveWeightScale         float32
 }
 
 func DefaultTrainConfig() TrainConfig {
 	return TrainConfig{
 		Bucket: 10_000, Dimension: 64, MinN: 3, MaxN: 5, Epochs: 25,
 		LearningRate: 0.05, L2: 0.0001, Alpha: 0.05, Seed: 42,
+		PositiveWeightScale: 1,
 	}
 }
 
@@ -45,7 +47,7 @@ type example struct {
 
 // Train fits a multinomial softmax model, calibrates it on disjoint datasets,
 // freezes selective thresholds, and writes deterministic v3 bytes.
-func Train(cfg TrainConfig) error {
+func trainLegacy(cfg TrainConfig) error {
 	if err := validateTrainConfig(cfg); err != nil {
 		return err
 	}

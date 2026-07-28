@@ -73,6 +73,8 @@ def selective_utility(label: str, prediction: dict) -> float:
     source = prediction["duration_source"]
     if source != "model":
         return 0.0
+    if label == "unresolved":
+        return -4.0 if prediction["duration"] == 2 else -2.0
     expected = LABEL_DURATION[label]
     actual = prediction["duration"]
     if actual == expected:
