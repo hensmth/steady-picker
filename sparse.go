@@ -4,7 +4,7 @@ import (
 	"math"
 )
 
-const temporalFeatureCount = 16
+const temporalFeatureCount = 32
 
 func sigmoid(value, temperature float32) float32 {
 	if temperature <= 0 {
@@ -21,8 +21,8 @@ func sigmoid(value, temperature float32) float32 {
 
 func sparseBuckets(text string, bucket, minN, maxN int, dst []int) []int {
 	dst = ngramBuckets(text, bucket, minN, maxN, dst)
-	var previous uint64
-	havePrevious := false
+	var older, previous uint64
+	wordCount := 0
 	for start := 0; start < len(text); {
 		for start < len(text) && !asciiWord(text[start]) {
 			start++
@@ -42,12 +42,18 @@ func sparseBuckets(text string, bucket, minN, maxN int, dst []int) []int {
 			end++
 		}
 		dst = append(dst, int(hash%uint64(bucket)))
-		if havePrevious {
+		if wordCount >= 1 {
 			pair := previous
 			pair ^= hash + 0x9e3779b97f4a7c15 + (pair << 6) + (pair >> 2)
 			dst = append(dst, int(pair%uint64(bucket)))
 		}
-		previous, havePrevious, start = hash, true, end
+		if wordCount >= 2 {
+			triple := older
+			triple ^= previous + 0x9e3779b97f4a7c15 + (triple << 6) + (triple >> 2)
+			triple ^= hash + 0x517cc1b727220a95 + (triple << 6) + (triple >> 2)
+			dst = append(dst, int(triple%uint64(bucket)))
+		}
+		older, previous, wordCount, start = previous, hash, wordCount+1, end
 	}
 	return dst
 }
@@ -68,7 +74,7 @@ func temporalValues(text string, out []float32) {
 		{" before ", " after "},
 		{" first ", " second ", " third "},
 		{" gradually", " eventually", "progress"},
-		{"transform", "turns into", "turn into"},
+		{"transform", "turns into", "turn into", "turning into", "morph", "becomes "},
 		{"evolv", "grow", "develop"},
 		{"time-lapse", "timelapse", "journey"},
 		{"build", "construct", "assemble"},
@@ -80,6 +86,14 @@ func temporalValues(text string, out []float32) {
 		{"from ", " into ", " to "},
 		{"crash", "explod", "destroy", "repair"},
 		{"walk", "run", "drive", "travel"},
+		{"over time", "life cycle", "season", "years ", "ages "},
+		{"begin", "start", "finish", " end ", "ends "},
+		{"create", "draw", "paint", "carve", "sculpt"},
+		{"reveal", "discover", "uncover", "emerge"},
+		{"launch", "takeoff", "take off", "land ", "landing"},
+		{"weather", "storm", "sunrise", "sunset", "day to night"},
+		{"enter", "encounter", "interview", "escape", "chase"},
+		{"stages", "steps", "sequence", "process", "progression"},
 	}
 	for index, patterns := range groups {
 		count := 0
@@ -91,6 +105,59 @@ func temporalValues(text string, out []float32) {
 		}
 		out[index] = float32(count) / 4
 	}
+	words, gerunds, punctuation := 0, 0, 0
+	for start := 0; start < len(text); {
+		if text[start] == ',' || text[start] == ';' || text[start] == ':' {
+			punctuation++
+		}
+		if !asciiWord(text[start]) {
+			start++
+			continue
+		}
+		end := start
+		for end < len(text) && asciiWord(text[end]) {
+			end++
+		}
+		words++
+		if end-start > 4 && equalFoldSuffix(text[start:end], "ing") {
+			gerunds++
+		}
+		start = end
+	}
+	active := 0
+	for _, value := range out[:24] {
+		if value > 0 {
+			active++
+		}
+	}
+	out[24] = min(float32(words)/64, 1)
+	out[25] = min(float32(punctuation)/8, 1)
+	out[26] = min(float32(countFold(text, " and "))/6, 1)
+	out[27] = min(float32(gerunds)/6, 1)
+	out[28] = min(float32(countFold(text, " into ")+countFold(text, " through "))/4, 1)
+	out[29] = min(float32(len(text))/512, 1)
+	out[30] = min(float32(active)/8, 1)
+	out[31] = min(float32(
+		countFold(text, " then ")+countFold(text, " next ")+
+			countFold(text, " finally ")+countFold(text, " followed by "),
+	)/4, 1)
+}
+
+func equalFoldSuffix(text, suffix string) bool {
+	if len(text) < len(suffix) {
+		return false
+	}
+	start := len(text) - len(suffix)
+	for index := range len(suffix) {
+		a, b := text[start+index], suffix[index]
+		if a >= 'A' && a <= 'Z' {
+			a += 'a' - 'A'
+		}
+		if a != b {
+			return false
+		}
+	}
+	return true
 }
 
 func countFold(text, pattern string) int {
@@ -125,8 +192,9 @@ func longCueEligible(text string) bool {
 	strong := 0
 	for _, pattern := range [...]string{
 		" then ", " and then ", " followed by ", " finally ",
-		"transform", "turns into", "turn into", "evolv",
-		"time-lapse", "timelapse", "gradually", "eventually",
+		"transform", "turns into", "turn into", "turning into", "morph", "becomes ",
+		"evolv", "grows into", "time-lapse", "timelapse", "gradually", "eventually",
+		"over time", "life cycle", "through the seasons", "through seasons", "stages",
 	} {
 		strong += countFold(text, pattern)
 	}
@@ -161,9 +229,11 @@ func v4Predict(
 	indices = sparseBuckets(text, bucket, minN, maxN, indices)
 	temporalValues(text, temporalBuffer)
 	clear(hidden)
-	scale := float32(0)
+	embeddingScale := float32(0)
+	sparseScale := float32(0)
 	if len(indices) > 0 {
-		scale = float32(1 / float64(len(indices)))
+		embeddingScale = float32(1 / float64(len(indices)))
+		sparseScale = float32(1 / math.Sqrt(float64(len(indices))))
 		for _, index := range indices {
 			base := index * dimension
 			for feature := 0; feature < dimension; feature++ {
@@ -171,18 +241,21 @@ func v4Predict(
 			}
 		}
 		for feature := range dimension {
-			hidden[feature] *= scale
+			hidden[feature] *= embeddingScale
 		}
 	}
-	stride := dimension + temporal
+	stride := bucket + dimension + temporal
 	for head := range bias {
 		logit := bias[head]
 		base := head * stride
+		for _, index := range indices {
+			logit += weights[base+index] * sparseScale
+		}
 		for feature := 0; feature < dimension; feature++ {
-			logit += weights[base+feature] * hidden[feature]
+			logit += weights[base+bucket+feature] * hidden[feature]
 		}
 		for feature := 0; feature < temporal; feature++ {
-			logit += weights[base+dimension+feature] * temporalBuffer[feature]
+			logit += weights[base+bucket+dimension+feature] * temporalBuffer[feature]
 		}
 		out[head] = sigmoid(logit, temperatures[head])
 	}

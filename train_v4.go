@@ -45,7 +45,7 @@ func Train(cfg TrainConfig) error {
 		return errors.New("steady: every frozen split must be non-empty")
 	}
 	positiveWeights := v4PositiveWeights(training, cfg.PositiveWeightScale)
-	stride := cfg.Dimension + temporalFeatureCount
+	stride := cfg.Bucket + cfg.Dimension + temporalFeatureCount
 	table := deterministicValues(cfg.Bucket*cfg.Dimension, cfg.Seed^0x91e10da5)
 	weights := deterministicValues(2*stride, cfg.Seed^0xd1b54a32)
 	bias := make([]float32, 2)
@@ -54,13 +54,16 @@ func Train(cfg TrainConfig) error {
 	hidden := make([]float32, cfg.Dimension)
 	gradientHidden := make([]float32, cfg.Dimension)
 	for epoch := 0; epoch < cfg.Epochs; epoch++ {
-		for _, ex := range training {
+		for _, row := range v4EpochOrder(len(training), cfg.Seed, epoch) {
+			ex := training[row]
 			indices = sparseBuckets(ex.text, cfg.Bucket, cfg.MinN, cfg.MaxN, indices[:0])
 			temporalValues(ex.text, temporal)
 			clear(hidden)
-			scale := float32(0)
+			embeddingScale := float32(0)
+			sparseScale := float32(0)
 			if len(indices) > 0 {
-				scale = float32(1 / float64(len(indices)))
+				embeddingScale = float32(1 / float64(len(indices)))
+				sparseScale = float32(1 / math.Sqrt(float64(len(indices))))
 				for _, index := range indices {
 					base := index * cfg.Dimension
 					for feature := 0; feature < cfg.Dimension; feature++ {
@@ -68,18 +71,21 @@ func Train(cfg TrainConfig) error {
 					}
 				}
 				for feature := range hidden {
-					hidden[feature] *= scale
+					hidden[feature] *= embeddingScale
 				}
 			}
 			clear(gradientHidden)
 			for head, labelIndex := range []int{0, 2} {
 				base := head * stride
 				logit := bias[head]
+				for _, index := range indices {
+					logit += weights[base+index] * sparseScale
+				}
 				for feature, value := range hidden {
-					logit += weights[base+feature] * value
+					logit += weights[base+cfg.Bucket+feature] * value
 				}
 				for feature, value := range temporal {
-					logit += weights[base+cfg.Dimension+feature] * value
+					logit += weights[base+cfg.Bucket+cfg.Dimension+feature] * value
 				}
 				target := float32(0)
 				sampleWeight := float32(1)
@@ -89,14 +95,19 @@ func Train(cfg TrainConfig) error {
 				}
 				gradient := (sigmoid(logit, 1) - target) * sampleWeight
 				bias[head] -= cfg.LearningRate * gradient
+				for _, index := range indices {
+					position := base + index
+					weights[position] -= cfg.LearningRate *
+						(gradient*sparseScale + cfg.L2*weights[position])
+				}
 				for feature, value := range hidden {
-					position := base + feature
+					position := base + cfg.Bucket + feature
 					gradientHidden[feature] += gradient * weights[position]
 					weights[position] -= cfg.LearningRate *
 						(gradient*value + cfg.L2*weights[position])
 				}
 				for feature, value := range temporal {
-					position := base + cfg.Dimension + feature
+					position := base + cfg.Bucket + cfg.Dimension + feature
 					weights[position] -= cfg.LearningRate *
 						(gradient*value + cfg.L2*weights[position])
 				}
@@ -106,7 +117,7 @@ func Train(cfg TrainConfig) error {
 				for feature := 0; feature < cfg.Dimension; feature++ {
 					position := base + feature
 					table[position] -= cfg.LearningRate *
-						(gradientHidden[feature]*scale + cfg.L2*table[position])
+						(gradientHidden[feature]*embeddingScale + cfg.L2*table[position])
 				}
 			}
 		}
@@ -123,7 +134,7 @@ func Train(cfg TrainConfig) error {
 		minN:             cfg.MinN,
 		maxN:             cfg.MaxN,
 		wordMinN:         1,
-		wordMaxN:         2,
+		wordMaxN:         3,
 		temporalFeatures: temporalFeatureCount,
 		metadata: Metadata{
 			ArtifactFormat:       int(modelVersion),
@@ -142,11 +153,11 @@ func Train(cfg TrainConfig) error {
 			Seed:                 cfg.Seed,
 			SourceManifestSHA256: cfg.SourceManifestSHA256,
 			TrainingCodeCommit:   cfg.TrainingCodeCommit,
-			ModelFamily:          "dual-head-embedding-v1",
-			FeatureSchema:        "hashed-char-word-embedding+temporal-v1",
+			ModelFamily:          "dual-head-hybrid-v1",
+			FeatureSchema:        "hashed-char-word-linear+embedding+temporal-v1",
 			Heads:                []string{"short", "long"},
 			WordMinN:             1,
-			WordMaxN:             2,
+			WordMaxN:             3,
 			TemporalFeatures:     temporalFeatureCount,
 			PositiveClassWeights: []float64{
 				float64(positiveWeights[0]), float64(positiveWeights[1]),
@@ -170,6 +181,22 @@ func Train(cfg TrainConfig) error {
 		return fmt.Errorf("steady: write artifact: %w", err)
 	}
 	return nil
+}
+
+func v4EpochOrder(count int, seed uint64, epoch int) []int {
+	order := make([]int, count)
+	for index := range order {
+		order[index] = index
+	}
+	state := seed ^ (uint64(epoch+1) * 0x9e3779b97f4a7c15)
+	for index := count - 1; index > 0; index-- {
+		state ^= state >> 12
+		state ^= state << 25
+		state ^= state >> 27
+		selected := int((state * 2685821657736338717) % uint64(index+1))
+		order[index], order[selected] = order[selected], order[index]
+	}
+	return order
 }
 
 func v4PositiveWeights(examples []example, multiplier float32) []float32 {
@@ -265,13 +292,6 @@ func fitV4Thresholds(model *Model, examples []example) []float32 {
 	out := []float32{1, 1}
 	for head, labelIndex := range []int{0, 2} {
 		minimum := []float64{0.95, 0.98}[head]
-		actualPositives := 0
-		for _, ex := range examples {
-			if ex.label == labelIndex {
-				actualPositives++
-			}
-		}
-		minimumAccepted := max(5, (actualPositives+3)/4)
 		for step := 160; step <= 199; step++ {
 			threshold := float32(step) * 0.005
 			accepted, correct := 0, 0
@@ -287,7 +307,7 @@ func fitV4Thresholds(model *Model, examples []example) []float32 {
 					}
 				}
 			}
-			if accepted >= minimumAccepted &&
+			if accepted > 0 &&
 				float64(correct)/float64(accepted) >= minimum {
 				out[head] = threshold
 				break

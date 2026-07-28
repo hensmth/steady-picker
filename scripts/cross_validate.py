@@ -79,11 +79,11 @@ def main() -> None:
         raise RuntimeError("--workers must be between 1 and 5")
     args.work_dir.mkdir(parents=True, exist_ok=True)
     candidates = itertools.product(
-        (10_000, 20_000),
-        (64, 96),
+        (100_000, 200_000),
+        (1, 8),
         ((3, 5), (3, 6)),
         (0.05, 0.1),
-        (0.5, 1.0),
+        (1.0, 2.0),
     )
     report = []
     for index, (bucket, dimension, ngrams, learning_rate, positive_weight_scale) in enumerate(candidates):

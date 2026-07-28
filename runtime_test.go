@@ -46,7 +46,7 @@ func testV4Model(t testing.TB) (*Model, []byte) {
 	const dimension = 8
 	m := &Model{
 		table:            make([]float32, bucket*dimension),
-		weights:          make([]float32, 2*(dimension+temporalFeatureCount)),
+		weights:          make([]float32, 2*(bucket+dimension+temporalFeatureCount)),
 		bias:             []float32{5, -5},
 		temperatures:     []float32{1, 1},
 		quantiles:        []float32{1, 0, 1, 0},
@@ -56,7 +56,7 @@ func testV4Model(t testing.TB) (*Model, []byte) {
 		minN:             3,
 		maxN:             5,
 		wordMinN:         1,
-		wordMaxN:         2,
+		wordMaxN:         3,
 		temporalFeatures: temporalFeatureCount,
 		metadata: Metadata{
 			ArtifactFormat: 4, ModelID: "settings-v2", Task: "video-duration-selection",
@@ -64,9 +64,9 @@ func testV4Model(t testing.TB) (*Model, []byte) {
 			MinN: 3, MaxN: 5, Bucket: bucket, Dimension: dimension, Epochs: 1,
 			LearningRate: 0.01, L2: 0.0001, Alpha: 0.05, Seed: 42,
 			SourceManifestSHA256: strings.Repeat("c", 64), TrainingCodeCommit: "test-v4",
-			ModelFamily: "dual-head-embedding-v1", Heads: []string{"short", "long"},
-			FeatureSchema: "hashed-char-word-embedding+temporal-v1",
-			WordMinN:      1, WordMaxN: 2, TemporalFeatures: temporalFeatureCount,
+			ModelFamily: "dual-head-hybrid-v1", Heads: []string{"short", "long"},
+			FeatureSchema: "hashed-char-word-linear+embedding+temporal-v1",
+			WordMinN:      1, WordMaxN: 3, TemporalFeatures: temporalFeatureCount,
 			PositiveClassWeights: []float64{1, 1},
 		},
 	}
@@ -314,7 +314,7 @@ func TestTrainingIsByteDeterministic(t *testing.T) {
 			t.Fatal(err)
 		}
 		if model.Metadata().ArtifactFormat != 4 ||
-			model.Metadata().ModelFamily != "dual-head-embedding-v1" {
+			model.Metadata().ModelFamily != "dual-head-hybrid-v1" {
 			t.Fatalf("unexpected trained metadata: %+v", model.Metadata())
 		}
 		return data

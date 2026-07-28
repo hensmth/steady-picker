@@ -181,7 +181,7 @@ func LoadBytes(input []byte) (*Model, error) {
 		}
 		heads := len(metadata.Heads)
 		table := take(metadata.Bucket * metadata.Dimension)
-		weights := take(heads * (metadata.Dimension + metadata.TemporalFeatures))
+		weights := take(heads * (metadata.Bucket + metadata.Dimension + metadata.TemporalFeatures))
 		bias := take(heads)
 		temperatures := take(heads)
 		quantiles := take(heads * 2)
@@ -262,10 +262,10 @@ func validateMetadata(m Metadata) error {
 		return errors.New("steady: semantic label order must be exactly short, medium, long")
 	}
 	if m.ArtifactFormat == int(modelVersion) {
-		if m.ModelFamily != "dual-head-embedding-v1" ||
-			m.FeatureSchema != "hashed-char-word-embedding+temporal-v1" ||
+		if m.ModelFamily != "dual-head-hybrid-v1" ||
+			m.FeatureSchema != "hashed-char-word-linear+embedding+temporal-v1" ||
 			!slices.Equal(m.Heads, []string{"short", "long"}) ||
-			m.WordMinN != 1 || m.WordMaxN != 2 ||
+			m.WordMinN != 1 || m.WordMaxN != 3 ||
 			m.TemporalFeatures != temporalFeatureCount ||
 			len(m.PositiveClassWeights) != 2 {
 			return errors.New("steady: invalid v4 model-family metadata")
@@ -286,11 +286,7 @@ func validateMetadata(m Metadata) error {
 	if len(m.PolicyCompatibility) > 128 || len(m.TrainingCodeCommit) > 256 {
 		return errors.New("steady: provenance metadata is too long")
 	}
-	maxBucket := 1_000_000
-	if m.ArtifactFormat == int(modelVersion) {
-		maxBucket = 4_000_000
-	}
-	if m.Bucket < 1 || m.Bucket > maxBucket || m.Dimension < 1 || m.Dimension > 4096 ||
+	if m.Bucket < 1 || m.Bucket > 1_000_000 || m.Dimension < 1 || m.Dimension > 4096 ||
 		m.MinN < 1 || m.MaxN < m.MinN || m.MaxN > 16 || m.Epochs < 1 ||
 		m.Epochs > 10000 || m.LearningRate <= 0 || m.LearningRate > 10 ||
 		m.L2 < 0 || m.L2 > 10 || m.Alpha <= 0 || m.Alpha >= 1 {
@@ -310,7 +306,7 @@ func checkedV4PayloadFloats(bucket, dim, temporal, heads int) (int, bool) {
 		return 0, false
 	}
 	n64 := int64(bucket)*int64(dim) +
-		int64(heads)*int64(dim+temporal) + int64(heads)*5
+		int64(heads)*int64(bucket+dim+temporal) + int64(heads)*5
 	if n64 <= 0 || n64 > int64(maxArtifactSize/4) {
 		return 0, false
 	}
