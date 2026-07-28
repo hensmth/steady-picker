@@ -81,6 +81,27 @@ Stop before splitting or model selection unless the support validator reports
 `row_integrity: true` and `unanimous_override_support_sufficient: true`. The
 validator never emits class counts or examples.
 
+If it fails, retire that holdout without inspecting counts. A single
+prospectively specified support-enriched replacement may be selected from the
+pinned source pools, with the development corpus, failed holdout, prior
+corpora, audits, and external evaluation rows all supplied as exclusions:
+
+```bash
+python scripts/select_semantic_holdout.py \
+  --cache .cache \
+  --output work/replacement-locked-prompts.jsonl \
+  --manifest work/replacement-locked-selection.json \
+  --seed 20260730 \
+  --videoufo-pool 120000 \
+  --videoufo-cache-only \
+  --exclude work/development-prompts.jsonl \
+  --exclude work/failed-locked-prompts.jsonl \
+  --exclude prior-corpus.jsonl
+```
+
+Run the same three sealed votes and support-only validator on that replacement.
+Do not repeatedly resample holdouts or select from teacher labels.
+
 Only after that gate passes, build splits and run the fixed 16-candidate,
 five-fold selection. The training script does not accept a holdout-label path:
 

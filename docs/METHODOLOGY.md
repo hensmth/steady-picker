@@ -60,6 +60,14 @@ probability-calibration, 1,000 conformal-calibration, and 2,000
 policy-development rows. A sealed validator reveals only whether the replacement
 holdout has sufficient unanimous short/long support.
 
+When the initial support check failed, one new holdout was selected
+prospectively without teacher labels: 400 simple/single-beat candidates, 100
+bridge cases, and 500 explicit progression/transformation candidates, balanced
+as closely as the fully excluded source pools allowed. The failed holdout became
+an exclusion source. Because this replacement is support-enriched, aggregate
+locked metrics describe that designed mixture, not a natural deployment
+prevalence; reporting must retain per-stratum results.
+
 An Apache-2.0 `paraphrase-MiniLM-L3-v2` encoder is adapted with SetFit-style
 contrastive pairs and used only as a teacher. The shipped student is a
 purpose-built two-layer Transformer with hidden size 128, four attention heads,
