@@ -260,7 +260,7 @@ def train_student(
     tokenizer: WordPiece,
     config: TrainConfig,
     device: torch.device,
-    batch_size: int = 64,
+    batch_size: int = 256,
 ) -> SemanticStudent:
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
@@ -367,7 +367,7 @@ def predict(
     rows: list[dict],
     tokenizer: WordPiece,
     device: torch.device,
-    batch_size: int = 128,
+    batch_size: int = 256,
 ) -> np.ndarray:
     model.eval()
     output = []
