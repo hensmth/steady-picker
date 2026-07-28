@@ -2,11 +2,14 @@ package steady
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"math"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestSemanticV5RoundTripAndDecisions(t *testing.T) {
@@ -154,6 +157,51 @@ func BenchmarkExternalSemanticV5Prediction(b *testing.B) {
 	b.ResetTimer()
 	for range b.N {
 		_, _, _ = model.pickDecision(prompt)
+	}
+}
+
+func TestExternalSemanticV5P95Latency(t *testing.T) {
+	modelPath := os.Getenv("STEADY_BENCH_MODEL")
+	promptsPath := os.Getenv("STEADY_BENCH_PROMPTS")
+	if modelPath == "" || promptsPath == "" {
+		t.Skip("STEADY_BENCH_MODEL and STEADY_BENCH_PROMPTS are not set")
+	}
+	model, err := Load(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(promptsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var prompts []string
+	for _, line := range strings.Split(string(body), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var row struct {
+			Prompt string `json:"prompt"`
+		}
+		if err := json.Unmarshal([]byte(line), &row); err != nil || row.Prompt == "" {
+			t.Fatalf("invalid latency prompt: %v", err)
+		}
+		prompts = append(prompts, row.Prompt)
+	}
+	if len(prompts) < 100 {
+		t.Fatal("latency evidence requires at least 100 prompts")
+	}
+	_, _, _ = model.pickDecision(prompts[0])
+	durations := make([]time.Duration, len(prompts))
+	for index, prompt := range prompts {
+		start := time.Now()
+		_, _, _ = model.pickDecision(prompt)
+		durations[index] = time.Since(start)
+	}
+	slices.Sort(durations)
+	p95 := durations[(len(durations)*95+99)/100-1]
+	t.Logf("semantic p95=%s across %d prompts", p95, len(prompts))
+	if p95 > 30*time.Millisecond {
+		t.Fatalf("semantic p95 %s exceeds 30ms", p95)
 	}
 }
 
