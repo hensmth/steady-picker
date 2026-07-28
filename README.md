@@ -10,9 +10,11 @@ single executable is enough.
 > **v0.2 status:** the original strict short-and-long release gate remains
 > failed. A separately marked pragmatic candidate enables learned `long`
 > decisions only and keeps every learned short decision at the safe fallback.
-> Its exact grouped-CV evidence passed the predeclared 75% precision gate; the
-> sealed evaluation must pass before the embedded bootstrap is replaced or a
-> release is published. See `evaluation/README.md`.
+> Its exact grouped-CV evidence passed the predeclared 75% precision gate, but
+> the frozen sealed evaluation accepted only 8 examples against a minimum of
+> 20. All 8 were correct and no learned short decision occurred. The embedded
+> bootstrap is therefore unchanged and no release is published. See
+> `evaluation/README.md`.
 
 ## Quick start
 

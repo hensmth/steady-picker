@@ -54,10 +54,13 @@ This does **not** satisfy the original 98% strict gate. That failure remains
 recorded separately. The pragmatic policy instead requires at least 75%
 locked-test precision and at least 20 accepted long examples, with no learned
 short decisions. Its final long threshold maximizes coverage on the dedicated
-policy-development split subject to the same 75% precision target. The sealed
-holdout, FETV evaluation, and independent audit
-remain release-blocking; no result is claimed until their checked-in gate
-marker exists.
+policy-development split subject to the same 75% precision target.
+
+The frozen artifact accepted 8 of 1,000 sealed examples, all 8 correct. It
+therefore passed point precision and produced zero learned short decisions,
+but failed the required minimum of 20 accepted examples. FETV and independent
+audit were not run after that terminal gate failure. No release result is
+claimed, the artifact remains unembedded, and the pass marker does not exist.
 
 ## Cost and limitations
 

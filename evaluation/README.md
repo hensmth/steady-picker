@@ -35,7 +35,15 @@ The pragmatic release requires:
 - at least 75% agreement on the audit's accepted-long slice; and
 - zero severe short-under-duration audit errors.
 
-The sealed test is opened only after source and artifact are frozen. Until
-`LONG_ONLY_PRAGMATIC_V2_PASSED` exists, the candidate must not be tagged,
-released, embedded, or promoted. Cross-validation evidence alone is not a
-release result.
+The source and artifact were frozen before the sealed test was opened. The
+candidate accepted 8 long decisions, all 8 correct, and produced zero learned
+short decisions. Precision passed, but the frozen minimum of 20 accepted
+examples failed. Coverage was 0.8%; wasted incremental spend was zero.
+The full 14,000-prompt development latency run measured 32.825 ms p95 against
+the 30 ms target, so the candidate also failed that engineering gate. Core,
+race, vet, and fuzz checks passed.
+
+The machine-readable result is
+`LONG_ONLY_PRAGMATIC_V2_DIAGNOSTICS.json`. The pass marker does not exist.
+This candidate must not be tagged, released, embedded, or promoted, and the
+opened holdout must not be used to tune a replacement.
