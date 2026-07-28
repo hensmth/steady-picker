@@ -8,6 +8,7 @@ import itertools
 import json
 import statistics
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 
@@ -43,7 +44,25 @@ def evaluate(binary: Path, model: Path, validation: list[tuple[str, str]]) -> di
         "short_precision": accepted["short"][1] / accepted["short"][0] if accepted["short"][0] else 0,
         "long_precision": accepted["long"][1] / accepted["long"][0] if accepted["long"][0] else 0,
         "coverage": sum(value[0] for value in accepted.values()) / len(validation),
+        "short_accepted": accepted["short"][0],
+        "short_correct": accepted["short"][1],
+        "long_accepted": accepted["long"][0],
+        "long_correct": accepted["long"][1],
     }
+
+
+def persist(path: Path, candidates: list[dict], selected: dict | None = None) -> None:
+    report = {
+        "schema": 1,
+        "gate_passed": selected is not None,
+        "selected": selected,
+        "candidates": candidates,
+    }
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    temporary.replace(path)
 
 
 def main() -> None:
@@ -54,7 +73,10 @@ def main() -> None:
     parser.add_argument("--source-manifest-sha256", required=True)
     parser.add_argument("--training-code-commit", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
+    if not 1 <= args.workers <= 5:
+        raise RuntimeError("--workers must be between 1 and 5")
     args.work_dir.mkdir(parents=True, exist_ok=True)
     candidates = itertools.product(
         (10_000, 20_000), (64, 96), ((3, 5), (3, 6)),
@@ -62,9 +84,7 @@ def main() -> None:
     )
     report = []
     for index, (bucket, dimension, ngrams, learning_rate, epochs) in enumerate(candidates):
-        fold_metrics = []
-        sizes = []
-        for fold in range(1, 6):
+        def run_fold(fold: int) -> tuple[dict, int]:
             directory = args.folds_dir / f"fold-{fold}"
             artifact = args.work_dir / f"candidate-{index:02d}-fold-{fold}.bin"
             command = [
@@ -81,9 +101,15 @@ def main() -> None:
                 "--training-code-commit", args.training_code_commit,
             ]
             subprocess.run(command, check=True, capture_output=True, text=True)
-            fold_metrics.append(evaluate(args.binary, artifact, rows(directory / "validation.txt")))
-            sizes.append(artifact.stat().st_size)
+            metric = evaluate(args.binary, artifact, rows(directory / "validation.txt"))
+            size = artifact.stat().st_size
             artifact.unlink()
+            return metric, size
+
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            fold_results = list(executor.map(run_fold, range(1, 6)))
+        fold_metrics = [metric for metric, _ in fold_results]
+        sizes = [size for _, size in fold_results]
         utilities = [metric["utility"] for metric in fold_metrics]
         candidate = {
             "bucket": bucket, "dimension": dimension, "min_ngram": ngrams[0],
@@ -101,6 +127,7 @@ def main() -> None:
             and candidate["mean_long_precision"] >= 0.98
         )
         report.append(candidate)
+        persist(args.output, report)
         print(json.dumps({"candidate": index + 1, "of": 32, **candidate}), flush=True)
     eligible = [candidate for candidate in report if candidate["eligible"]]
     if not eligible:
@@ -113,10 +140,7 @@ def main() -> None:
             candidate["mean_artifact_bytes"],
         ),
     )[0]
-    args.output.write_text(
-        json.dumps({"schema": 1, "selected": selected, "candidates": report}, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    persist(args.output, report, selected)
 
 
 if __name__ == "__main__":

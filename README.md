@@ -4,8 +4,14 @@ SteadyPicker is a local, deterministic video-settings engine. It chooses a
 quota-aware duration and parses aspect ratio and resolution without making a
 network or LLM call in production.
 
-The CLI embeds the model, attribution, and `quota-safe-v2` profile. A single
-executable is enough.
+The CLI embeds an artifact, attribution, and the `quota-safe-v2` profile. A
+single executable is enough.
+
+> **v0.2 status:** model selection failed the frozen long-override gate. The
+> branch therefore embeds a release-blocked bootstrap artifact that always
+> leaves learned duration at the safe fallback. `steady-picker health` reports
+> `"status":"bootstrap"` and `"ready":false`. Use v0.1 for the released model;
+> see `evaluation/README.md` for the complete v0.2 evidence.
 
 ## Quick start
 
@@ -132,19 +138,20 @@ rows, duplicates, and near-duplicate clusters before teacher labelling.
 
 ```bash
 python scripts/build_corpus.py \
-  --cache .cache --output corpus/settings-v2.jsonl \
+  --cache .cache --output corpus/prompts.jsonl \
+  --extras-output corpus/audit-extras.jsonl \
   --manifest corpus/source-manifest.json
 
 python scripts/label_with_hermes.py \
-  --input corpus/settings-v2.jsonl \
-  --output corpus/settings-v2-labelled.jsonl \
+  --input corpus/prompts.jsonl \
+  --output corpus/labelled.jsonl \
   --manifest corpus/teacher-manifest.json \
   --checkpoint-dir .checkpoints \
   --provider openai-codex --teacher-model gpt-5.6-sol
 
 python scripts/build_splits.py \
-  --input corpus/settings-v2-labelled.jsonl \
-  --output-dir corpus/splits --manifest corpus/split-manifest.json
+  --input corpus/labelled.jsonl \
+  --output-dir corpus/splits --manifest corpus/splits-manifest.json
 ```
 
 Teacher labelling is local by default and supports optional generic SSH

@@ -84,14 +84,15 @@ jobs:
       - name: Add governed artifacts and checksums
         run: |
           cp models/settings-v2.bin dist/settings-v2.bin
-          cp corpus/settings-v2.jsonl corpus/DATASET_CARD.md evaluation/report.json MODEL_CARD.md THIRD_PARTY_NOTICES.md dist/
+          cp corpus/labelled.jsonl corpus/membership.jsonl corpus/source-manifest.json corpus/teacher-manifest.json dist/
+          cp corpus/DATASET_CARD.md evaluation/report.json MODEL_CARD.md THIRD_PARTY_NOTICES.md dist/
           cd dist
           sha256sum * > SHA256SUMS
       - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: |
             dist/settings-v2.bin
-            dist/settings-v2.jsonl
+            dist/labelled.jsonl
             dist/SHA256SUMS
       - name: Create draft only
         env:

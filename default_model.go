@@ -2,13 +2,14 @@ package steady
 
 import _ "embed"
 
-// DefaultModelVersion identifies the model embedded in released binaries.
+// DefaultModelVersion identifies the embedded artifact interface.
 const DefaultModelVersion = "settings-v2"
 
 //go:embed models/settings-v2.bin
 var defaultModelArtifact []byte
 
-// LoadDefault loads the immutable trained settings model embedded in this package.
+// LoadDefault loads the embedded immutable artifact. Development builds may
+// contain the release-blocked bootstrap artifact reported by the health command.
 func LoadDefault() (*Model, error) {
 	return LoadBytes(defaultModelArtifact)
 }

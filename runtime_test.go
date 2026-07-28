@@ -245,7 +245,8 @@ func TestDefaultModelIsV3AndSelfContained(t *testing.T) {
 func TestCLIHealthAndNDJSON(t *testing.T) {
 	health := exec.Command("go", "run", "./cmd/steady-picker", "health")
 	healthOutput, err := health.Output()
-	if err != nil || !bytes.Contains(healthOutput, []byte(`"status":"ok"`)) {
+	if err != nil || !bytes.Contains(healthOutput, []byte(`"status":"bootstrap"`)) ||
+		!bytes.Contains(healthOutput, []byte(`"ready":false`)) {
 		t.Fatalf("health failed: %v %s", err, healthOutput)
 	}
 	command := exec.Command("go", "run", "./cmd/steady-picker", "predict")

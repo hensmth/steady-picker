@@ -139,7 +139,17 @@ func health(args []string) {
 	if err != nil {
 		fatal("unhealthy: %v", err)
 	}
-	fmt.Printf("{\"status\":\"ok\",\"artifact_sha256\":%q}\n", model.Metadata().ArtifactSHA256)
+	metadata := model.Metadata()
+	status := "ok"
+	ready := true
+	if metadata.TrainingCodeCommit == "bootstrap-not-for-release" {
+		status = "bootstrap"
+		ready = false
+	}
+	fmt.Printf(
+		"{\"status\":%q,\"ready\":%t,\"model_version\":%q,\"artifact_sha256\":%q}\n",
+		status, ready, metadata.ModelID, metadata.ArtifactSHA256,
+	)
 }
 
 func licenses() {
