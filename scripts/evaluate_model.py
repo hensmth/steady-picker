@@ -68,6 +68,29 @@ def predict(binary: Path, model: Path, rows: list[dict]) -> list[dict]:
     return predictions
 
 
+def predict_v1(binary: Path, model: Path, rows: list[dict]) -> list[dict]:
+    requests = "".join(
+        json.dumps({"prompt": row["prompt"], "mode": "text-to-video"}) + "\n"
+        for row in rows
+    )
+    result = subprocess.run(
+        [str(binary), "predict", "--model", str(model), "--model-version", "v1"],
+        input=requests,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    predictions = [json.loads(line) for line in result.stdout.splitlines()]
+    if len(predictions) != len(rows):
+        raise RuntimeError("v1 predictor changed row count")
+    for prediction in predictions:
+        if prediction.get("model_version") != "v1":
+            raise RuntimeError("v1 predictor returned invalid provenance")
+        prediction["duration_source"] = prediction["source"]
+        prediction["estimated_cost_microusd"] = prediction["duration"] * 50_000
+    return predictions
+
+
 def binomial_tail(successes: int, trials: int, probability: float) -> float:
     if successes == 0:
         return 1.0
@@ -163,7 +186,8 @@ def main() -> None:
     parser.add_argument("--locked-test", type=Path, required=True)
     parser.add_argument("--fetv-labelled", type=Path, required=True)
     parser.add_argument("--audit-json", type=Path, required=True)
-    parser.add_argument("--v1-report", type=Path, required=True)
+    parser.add_argument("--v1-binary", type=Path, required=True)
+    parser.add_argument("--v1-model", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--gate-marker", type=Path, required=True)
     args = parser.parse_args()
@@ -172,12 +196,15 @@ def main() -> None:
     if len(locked_rows) != 1000:
         raise RuntimeError("locked test must contain exactly 1,000 rows")
     locked = metrics(locked_rows, predict(args.binary, args.model, locked_rows))
+    v1 = metrics(
+        locked_rows,
+        predict_v1(args.v1_binary, args.v1_model, locked_rows),
+    )
     fetv_rows = labelled_rows(args.fetv_labelled)
     if len(fetv_rows) != 619:
         raise RuntimeError("FETV evaluation must contain exactly 619 rows")
     fetv = metrics(fetv_rows, predict(args.binary, args.model, fetv_rows))
     audit = json.loads(args.audit_json.read_text(encoding="utf-8"))
-    v1 = json.loads(args.v1_report.read_text(encoding="utf-8"))
     deterministic_utility = 0.0
     gates = {
         "short_point_precision": locked["per_class"]["short"]["precision"] >= 0.95,
