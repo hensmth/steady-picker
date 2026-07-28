@@ -78,9 +78,11 @@ and float32 layer normalization keep inference self-contained in pure Go.
 All hyperparameter selection occurs in five grouped folds inside the training
 split. The fixed 16-candidate grid covers learning rate, long-class weight,
 contrastive-loss weight, and focal-loss strength. Candidate ordering is fixed;
-the best cost-weighted selective utility must first satisfy pooled short/long
-precision, minimum accepted counts, and per-fold support constraints. Ties
-resolve by lower fold variance and then candidate order.
+the short head uses its fold-specific inverse-frequency weight and the long
+grid values multiply its independently derived fold-specific class-balance
+weight. The best cost-weighted selective utility must first satisfy pooled
+short/long precision, minimum accepted counts, and per-fold support
+constraints. Ties resolve by lower fold variance and then candidate order.
 
 After selection, temperature scaling uses a dedicated probability-calibration
 split. Class-specific conformal quantiles use a separate calibration split.
