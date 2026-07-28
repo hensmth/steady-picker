@@ -1,0 +1,42 @@
+{
+  "artifact_sha256": "2ea8edf030b351cdcd3e992ff1c15fbbaab3b49bb0b64fa04b506db318eba5a3",
+  "decision_policy": "long-only-pragmatic-v2",
+  "development_policy": {
+    "accepted_long": 8,
+    "correct_long": 6,
+    "examples": 2000,
+    "learned_short": 0,
+    "long_precision": 0.75
+  },
+  "engineering": {
+    "cue_fuzz_passed": true,
+    "go_race_passed": true,
+    "go_test_passed": true,
+    "go_vet_passed": true,
+    "loader_fuzz_passed": true,
+    "profile_fuzz_passed": true,
+    "semantic_p95_milliseconds": 32.825,
+    "semantic_p95_target_milliseconds": 30,
+    "semantic_p95_target_passed": false
+  },
+  "locked_test": {
+    "accepted_long": 8,
+    "correct_long": 8,
+    "exact_one_sided_95_lower": 0.6876560219336322,
+    "examples": 1000,
+    "incremental_spend_microusd": 800000,
+    "learned_short": 0,
+    "long_precision": 1.0,
+    "override_coverage": 0.008,
+    "wasted_incremental_spend_microusd": 0
+  },
+  "passed": false,
+  "release_gates": {
+    "long_accepted_at_least_20": false,
+    "long_precision_at_least_0_75": true,
+    "no_learned_short": true
+  },
+  "schema": 1,
+  "selection_commit": "2bbd5d8a1230b113c71e9a22df6174631f7eefd8",
+  "stop_reason": "The locked test accepted 8 long overrides; the frozen minimum is 20."
+}

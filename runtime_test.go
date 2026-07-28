@@ -40,6 +40,47 @@ func testModel(t testing.TB) (*Model, []byte) {
 	return loaded, data
 }
 
+func testV4Model(t testing.TB) (*Model, []byte) {
+	t.Helper()
+	const bucket = 64
+	const dimension = 8
+	m := &Model{
+		table:            make([]float32, bucket*dimension),
+		weights:          make([]float32, 2*(bucket+dimension+temporalFeatureCount)),
+		bias:             []float32{5, -5},
+		temperatures:     []float32{1, 1},
+		quantiles:        []float32{1, 0, 1, 0},
+		thresholds:       []float32{0.8, 0.8},
+		bucket:           bucket,
+		dim:              dimension,
+		minN:             3,
+		maxN:             5,
+		wordMinN:         1,
+		wordMaxN:         3,
+		temporalFeatures: temporalFeatureCount,
+		metadata: Metadata{
+			ArtifactFormat: 4, ModelID: "settings-v2", Task: "video-duration-selection",
+			Labels: []string{"short", "medium", "long"}, PolicyCompatibility: ProfileQuotaSafeV2,
+			MinN: 3, MaxN: 5, Bucket: bucket, Dimension: dimension, Epochs: 1,
+			LearningRate: 0.01, L2: 0.0001, Alpha: 0.05, Seed: 42,
+			SourceManifestSHA256: strings.Repeat("c", 64), TrainingCodeCommit: "test-v4",
+			ModelFamily: "dual-head-hybrid-v1", Heads: []string{"short", "long"},
+			FeatureSchema: "hashed-char-word-linear+embedding+temporal-v1",
+			WordMinN:      1, WordMaxN: 3, TemporalFeatures: temporalFeatureCount,
+			PositiveClassWeights: []float64{1, 1},
+		},
+	}
+	data, err := marshalModel(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadBytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return loaded, data
+}
+
 func TestArtifactRoundTripAndDerivedIdentity(t *testing.T) {
 	model, data := testModel(t)
 	if model.Metadata().ArtifactSHA256 == "" || model.Metadata().ModelID != "settings-v2" {
@@ -52,6 +93,19 @@ func TestArtifactRoundTripAndDerivedIdentity(t *testing.T) {
 	reloaded, err := Load(path)
 	if err != nil || reloaded.Metadata().ArtifactSHA256 != model.Metadata().ArtifactSHA256 {
 		t.Fatalf("reload: %v %+v", err, reloaded)
+	}
+}
+
+func TestV4ArtifactRoundTripAndDecision(t *testing.T) {
+	model, data := testV4Model(t)
+	if model.Metadata().ArtifactFormat != 4 || len(data) >= 32<<20 {
+		t.Fatalf("unexpected v4 artifact: %+v bytes=%d", model.Metadata(), len(data))
+	}
+	result, err := PickSettings(model, QuotaSafeProfile(), PickRequest{
+		Prompt: "one quick wink", Mode: TextToVideo,
+	})
+	if err != nil || result.Duration != 2 || result.DurationSource != "model" {
+		t.Fatalf("v4 decision: %+v %v", result, err)
 	}
 }
 
@@ -203,6 +257,29 @@ func TestConcurrentSharedModel(t *testing.T) {
 	wg.Wait()
 }
 
+func TestConcurrentSharedV4Model(t *testing.T) {
+	model, _ := testV4Model(t)
+	const goroutines = 100
+	const each = 1000
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for worker := 0; worker < goroutines; worker++ {
+		go func() {
+			defer wg.Done()
+			for i := 0; i < each; i++ {
+				result, err := PickSettings(model, QuotaSafeProfile(), PickRequest{
+					Prompt: "one quick wink", Mode: TextToVideo,
+				})
+				if err != nil || result.Duration != 2 {
+					t.Errorf("v4 prediction failed: %+v %v", result, err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func TestTrainingIsByteDeterministic(t *testing.T) {
 	dir := t.TempDir()
 	rows := []byte(
@@ -232,6 +309,14 @@ func TestTrainingIsByteDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		model, err := LoadBytes(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if model.Metadata().ArtifactFormat != 4 ||
+			model.Metadata().ModelFamily != "dual-head-hybrid-v1" {
+			t.Fatalf("unexpected trained metadata: %+v", model.Metadata())
+		}
 		return data
 	}
 	if first, second := run("first.bin"), run("second.bin"); !bytes.Equal(first, second) {
@@ -239,12 +324,14 @@ func TestTrainingIsByteDeterministic(t *testing.T) {
 	}
 }
 
-func TestDefaultModelIsV3AndSelfContained(t *testing.T) {
+func TestDefaultModelIsV5AndSelfContained(t *testing.T) {
 	model, err := LoadDefault()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model.Metadata().ArtifactFormat != 3 || len(model.Metadata().ArtifactSHA256) != 64 {
+	if model.Metadata().ArtifactFormat != 5 ||
+		model.Metadata().DecisionPolicy != DecisionPolicyLongOnlyPragmaticV2 ||
+		len(model.Metadata().ArtifactSHA256) != 64 {
 		t.Fatalf("unexpected embedded metadata: %+v", model.Metadata())
 	}
 	if len(defaultModelArtifact) >= 10<<20 {
@@ -255,8 +342,11 @@ func TestDefaultModelIsV3AndSelfContained(t *testing.T) {
 func TestCLIHealthAndNDJSON(t *testing.T) {
 	health := exec.Command("go", "run", "./cmd/steady-picker", "health")
 	healthOutput, err := health.Output()
-	if err != nil || !bytes.Contains(healthOutput, []byte(`"status":"bootstrap"`)) ||
-		!bytes.Contains(healthOutput, []byte(`"ready":false`)) {
+	if err != nil || !bytes.Contains(healthOutput, []byte(`"status":"ok"`)) ||
+		!bytes.Contains(healthOutput, []byte(`"ready":true`)) ||
+		!bytes.Contains(healthOutput, []byte(
+			`"decision_policy":"long-only-pragmatic-v2"`,
+		)) {
 		t.Fatalf("health failed: %v %s", err, healthOutput)
 	}
 	command := exec.Command("go", "run", "./cmd/steady-picker", "predict")
@@ -292,9 +382,31 @@ func BenchmarkPickSettingsFallback(b *testing.B) {
 	}
 }
 
+func BenchmarkPickSettingsV4(b *testing.B) {
+	model, _ := testV4Model(b)
+	profile := QuotaSafeProfile()
+	request := PickRequest{
+		Prompt: "A seed sprouts, grows into a tree, and finally blooms.",
+		Mode:   TextToVideo,
+	}
+	_, _ = PickSettings(model, profile, request)
+	b.ReportAllocs()
+	for range b.N {
+		if _, err := PickSettings(model, profile, request); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func FuzzLoadBytes(f *testing.F) {
 	_, seed := testModel(f)
 	f.Add(seed)
+	v5Header := make([]byte, modelHeaderSize+2)
+	binary.LittleEndian.PutUint32(v5Header[:4], modelMagic)
+	binary.LittleEndian.PutUint32(v5Header[4:8], modelVersion)
+	binary.LittleEndian.PutUint32(v5Header[8:12], 1)
+	binary.LittleEndian.PutUint64(v5Header[16:24], 1)
+	f.Add(v5Header)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = LoadBytes(data)
 	})

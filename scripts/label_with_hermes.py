@@ -9,6 +9,10 @@ import json
 import random
 import shlex
 import subprocess
+import os
+import time
+import shutil
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -20,35 +24,77 @@ long = ordered stages, transformation, progression, or multiple dependent action
 Return ONLY a JSON array in input order. Each item is {{"id": integer, "label": string}}.
 Never return explanations or prompt text."""
 
+STRUCTURED_RUBRIC = """Independently annotate the minimum normal-paced video needed
+to depict every requested action without inventing filler. LABELS: {labels}.
+short = one simple beat.
+medium = one developed action or modest motion.
+long = ordered stages, transformation, progression, or multiple dependent actions.
+For every input return: label; beats (1, 2, or 3 where 3 means three-or-more);
+ordered (whether distinct actions must occur in order); transformation (whether a
+subject changes state or identity); and dependent_actions (whether multiple
+requested actions depend on one another). Return ONLY a JSON array in input
+order. Each item is {{"id": integer, "label": string, "beats": integer,
+"ordered": boolean, "transformation": boolean, "dependent_actions": boolean}}.
+Never return explanations or prompt text."""
+
+STRUCTURED_FIELDS = {
+    "ordered",
+    "transformation",
+    "dependent_actions",
+}
+
 
 def invoke(
     batch: list[dict],
     labels: list[str],
     args: argparse.Namespace,
+    invocation_id: str,
 ) -> list[dict]:
-    prompt = RUBRIC.format(labels=",".join(labels)) + "\nINPUT:\n" + json.dumps(batch)
+    rubric = STRUCTURED_RUBRIC if args.structured_unanimous else RUBRIC
+    prompt = rubric.format(labels=",".join(labels)) + "\nINPUT:\n" + json.dumps(batch)
+    usage_file = args.usage_dir / f"{invocation_id}.json"
     command = [
         args.hermes,
-        "chat",
-        "--safe-mode",
+        "--usage-file",
+        str(usage_file),
         "--provider",
         args.provider,
-        "--model",
+        "-m",
         args.teacher_model,
-        "--quiet",
-        "--query",
+        "--ignore-rules",
+        "-z",
         prompt,
     ]
     invocation = ["ssh", args.ssh_host, shlex.join(command)] if args.ssh_host else command
     last_error: Exception | None = None
     for attempt in range(3):
         try:
+            remaining = int(args.deadline - time.monotonic())
+            if remaining <= 0:
+                raise RuntimeError("teacher wall-clock deadline expired")
+            env = os.environ.copy()
+            env["HERMES_HOME"] = str(args.hermes_home)
+            if args.hermes_env:
+                env["HERMES_ENV"] = str(args.hermes_env)
             result = subprocess.run(
-                invocation, check=True, capture_output=True, text=True, timeout=args.timeout
+                invocation,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=min(args.timeout, remaining),
+                env=env,
             )
-            transcript = (result.stdout + "\n" + result.stderr).lower()
-            if args.provider.lower() not in transcript and args.require_provider_evidence:
-                raise RuntimeError("teacher transcript did not confirm requested provider")
+            if args.require_provider_evidence:
+                usage = json.loads(usage_file.read_text(encoding="utf-8"))
+                evidence = json.dumps(usage, sort_keys=True).lower()
+                for required, description in (
+                    (args.provider, "provider"),
+                    (args.teacher_model, "model"),
+                ):
+                    if required.lower() not in evidence:
+                        raise RuntimeError(
+                            f"teacher usage did not confirm requested {description}"
+                        )
             start, end = result.stdout.find("["), result.stdout.rfind("]")
             if start < 0 or end < start:
                 raise RuntimeError("teacher response did not contain a JSON array")
@@ -60,6 +106,16 @@ def invoke(
                     raise RuntimeError("teacher changed row order or id")
                 if received.get("label") not in {"short", "medium", "long"}:
                     raise RuntimeError(f"invalid teacher label: {received!r}")
+                if args.structured_unanimous:
+                    if received.get("beats") not in {1, 2, 3}:
+                        raise RuntimeError(f"invalid teacher beats: {received!r}")
+                    if any(
+                        type(received.get(field)) is not bool
+                        for field in STRUCTURED_FIELDS
+                    ):
+                        raise RuntimeError(
+                            f"invalid structured teacher fields: {received!r}"
+                        )
             return labelled
         except (json.JSONDecodeError, RuntimeError, subprocess.SubprocessError) as error:
             last_error = error
@@ -73,34 +129,76 @@ def pass_votes(
     pass_number: int,
     args: argparse.Namespace,
     checkpoint: Path,
-) -> dict[int, str]:
+) -> dict[int, object]:
     rng = random.Random(args.seed + pass_number)
     shuffled = list(rows)
     rng.shuffle(shuffled)
     labels = ["short", "medium", "long"]
     rng.shuffle(labels)
-    votes: dict[int, str] = {}
+    votes: dict[int, object] = {}
     if checkpoint.exists():
         loaded = json.loads(checkpoint.read_text(encoding="utf-8"))
         votes = {int(key): value for key, value in loaded.items()}
         valid_ids = {int(row["id"]) for row in rows}
-        if not set(votes) <= valid_ids or any(
-            value not in {"short", "medium", "long"} for value in votes.values()
-        ):
+        invalid = not set(votes) <= valid_ids
+        if args.structured_unanimous:
+            invalid = invalid or any(
+                not isinstance(value, dict)
+                or value.get("label") not in {"short", "medium", "long"}
+                or value.get("beats") not in {1, 2, 3}
+                or any(type(value.get(field)) is not bool for field in STRUCTURED_FIELDS)
+                for value in votes.values()
+            )
+        else:
+            invalid = invalid or any(
+                value not in {"short", "medium", "long"}
+                for value in votes.values()
+            )
+        if invalid:
             raise RuntimeError(f"invalid checkpoint {checkpoint}")
     pending = [row for row in shuffled if int(row["id"]) not in votes]
     batches = [
-        [{"id": row["id"], "prompt": row["prompt"]} for row in pending[offset : offset + args.batch_size]]
+        (
+            hashlib.sha256(
+                ",".join(
+                    str(row["id"])
+                    for row in pending[offset : offset + args.batch_size]
+                ).encode()
+            ).hexdigest()[:16],
+            [
+                {"id": row["id"], "prompt": row["prompt"]}
+                for row in pending[offset : offset + args.batch_size]
+            ],
+        )
         for offset in range(0, len(pending), args.batch_size)
     ]
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         for offset in range(0, len(batches), args.workers):
             wave = batches[offset : offset + args.workers]
-            futures = [executor.submit(invoke, batch, labels, args) for batch in wave]
+            futures = [
+                executor.submit(
+                    invoke,
+                    batch,
+                    labels,
+                    args,
+                    f"pass-{pass_number}-batch-{batch_index}",
+                )
+                for batch_index, batch in wave
+            ]
             try:
                 for future in futures:
                     for labelled in future.result():
-                        votes[int(labelled["id"])] = labelled["label"]
+                        votes[int(labelled["id"])] = (
+                            {
+                                "label": labelled["label"],
+                                "beats": labelled["beats"],
+                                "ordered": labelled["ordered"],
+                                "transformation": labelled["transformation"],
+                                "dependent_actions": labelled["dependent_actions"],
+                            }
+                            if args.structured_unanimous
+                            else labelled["label"]
+                        )
                     temporary = checkpoint.with_suffix(".tmp")
                     temporary.write_text(
                         json.dumps(votes, sort_keys=True) + "\n", encoding="utf-8"
@@ -131,6 +229,15 @@ def weighted_kappa(first: list[str], second: list[str]) -> float:
     return 1 - observed / expected if expected else 1.0
 
 
+def usage_count(row: dict, key: str) -> int:
+    value = row.get(key)
+    if value is None:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        raise RuntimeError(f"invalid Hermes usage field {key}: {value!r}")
+    return int(value)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True)
@@ -145,9 +252,30 @@ def main() -> None:
     parser.add_argument("--provider", default="openai-codex")
     parser.add_argument("--teacher-model", required=True)
     parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument("--deadline-seconds", type=int, default=3600)
+    parser.add_argument("--reasoning-effort", default="ultra")
+    parser.add_argument("--hermes-env", type=Path)
+    parser.add_argument(
+        "--hermes-auth",
+        type=Path,
+        default=Path.home() / ".hermes" / "auth.json",
+    )
+    parser.add_argument("--usage-dir", type=Path, required=True)
     parser.add_argument("--expected-count", type=int, default=5000)
     parser.add_argument("--require-provider-evidence", action="store_true")
+    parser.add_argument(
+        "--structured-unanimous",
+        action="store_true",
+        help="run three complete structured passes and require 3/3 label agreement",
+    )
+    parser.add_argument(
+        "--sealed-output",
+        action="store_true",
+        help="omit label-derived aggregate statistics from manifest/stdout",
+    )
     args = parser.parse_args()
+    if args.sealed_output and not args.structured_unanimous:
+        raise RuntimeError("--sealed-output requires --structured-unanimous")
     if not 1 <= args.workers <= 4:
         raise RuntimeError("--workers must be between 1 and 4")
     rows = [json.loads(line) for line in args.input.read_text(encoding="utf-8").splitlines()]
@@ -156,64 +284,174 @@ def main() -> None:
             f"input must contain exactly ordered ids 0..{args.expected_count - 1}"
         )
     args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    args.usage_dir.mkdir(parents=True, exist_ok=True)
+    args.hermes_temp = tempfile.TemporaryDirectory(prefix="steady-hermes-")
+    args.hermes_home = Path(args.hermes_temp.name)
+    args.isolated_config = args.hermes_home / "config.yaml"
+    args.isolated_config.write_text(
+        json.dumps(
+            {
+                "agent": {"reasoning_effort": args.reasoning_effort},
+                "model": {
+                    "provider": args.provider,
+                    "default": args.teacher_model,
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    if not args.hermes_auth.is_file():
+        raise RuntimeError("Hermes auth file is missing")
+    shutil.copyfile(args.hermes_auth, args.hermes_home / "auth.json")
+    os.chmod(args.hermes_home / "auth.json", 0o600)
+    verification_env = os.environ.copy()
+    verification_env["HERMES_HOME"] = str(args.hermes_home)
+    verified_effort = subprocess.run(
+        [args.hermes, "config", "get", "agent.reasoning_effort"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=verification_env,
+    ).stdout.strip()
+    if verified_effort != args.reasoning_effort:
+        raise RuntimeError(
+            f"isolated Hermes reasoning mismatch: {verified_effort!r}"
+        )
+    args.deadline = time.monotonic() + args.deadline_seconds
 
-    votes: list[dict[int, str]] = []
-    for pass_number in (1, 2):
+    votes: list[dict[int, object]] = []
+    pass_numbers = (1, 2, 3) if args.structured_unanimous else (1, 2)
+    for pass_number in pass_numbers:
         checkpoint = args.checkpoint_dir / f"teacher-pass-{pass_number}.json"
         vote = pass_votes(rows, pass_number, args, checkpoint)
         votes.append(vote)
 
-    disagreements = [row for row in rows if votes[0][row["id"]] != votes[1][row["id"]]]
-    third = (
-        pass_votes(
-            disagreements,
-            3,
-            args,
-            args.checkpoint_dir / "teacher-pass-3.json",
+    if args.structured_unanimous:
+        third: dict[int, object] = votes[2]
+    else:
+        disagreements = [
+            row for row in rows if votes[0][row["id"]] != votes[1][row["id"]]
+        ]
+        third = (
+            pass_votes(
+                disagreements,
+                3,
+                args,
+                args.checkpoint_dir / "teacher-pass-3.json",
+            )
+            if disagreements
+            else {}
         )
-        if disagreements
-        else {}
-    )
     output: list[dict] = []
     unresolved = 0
     for row in rows:
         row_id = row["id"]
-        row_votes = [votes[0][row_id], votes[1][row_id]]
-        if row_id in third:
-            row_votes.append(third[row_id])
+        if args.structured_unanimous:
+            structured_votes = [vote[row_id] for vote in votes]
+            row_votes = [vote["label"] for vote in structured_votes]
+        else:
+            structured_votes = []
+            row_votes = [votes[0][row_id], votes[1][row_id]]
+            if row_id in third:
+                row_votes.append(third[row_id])
         counts = {label: row_votes.count(label) for label in {"short", "medium", "long"}}
         final = max(sorted(counts), key=counts.get)
-        is_unresolved = max(counts.values()) < 2
+        is_unresolved = (
+            len(set(row_votes)) != 1
+            if args.structured_unanimous
+            else max(counts.values()) < 2
+        )
         unresolved += is_unresolved
+        auxiliary = {}
+        if args.structured_unanimous:
+            for field in ("beats", *sorted(STRUCTURED_FIELDS)):
+                values = [vote[field] for vote in structured_votes]
+                auxiliary[field] = values[0] if len(set(values)) == 1 else None
         output.append(
             {
                 **row,
                 "teacher_votes": row_votes,
+                **(
+                    {
+                        "structured_votes": structured_votes,
+                        "structured_consensus": auxiliary,
+                    }
+                    if args.structured_unanimous
+                    else {}
+                ),
                 "final_label": None if is_unresolved else final,
                 "unresolved": is_unresolved,
             }
         )
-    kappa = weighted_kappa(
-        [votes[0][row["id"]] for row in rows],
-        [votes[1][row["id"]] for row in rows],
-    )
-    if kappa < 0.75 or unresolved / len(rows) > 0.02:
-        raise RuntimeError(f"labelling gate failed: kappa={kappa:.4f}, unresolved={unresolved}")
+    label_votes = [
+        [
+            (
+                vote[row["id"]]["label"]
+                if args.structured_unanimous
+                else vote[row["id"]]
+            )
+            for row in rows
+        ]
+        for vote in votes
+    ]
+    kappas = [
+        weighted_kappa(label_votes[left], label_votes[right])
+        for left in range(len(label_votes))
+        for right in range(left + 1, len(label_votes))
+    ]
+    kappa = min(kappas)
+    if not args.structured_unanimous and (
+        kappa < 0.80 or unresolved / len(rows) > 0.02
+    ):
+        raise RuntimeError(
+            f"labelling gate failed: min_kappa={kappa:.4f}, unresolved={unresolved}"
+        )
     body = "".join(json.dumps(row, sort_keys=True) + "\n" for row in output)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(body, encoding="utf-8")
+    usage_rows = []
+    for path in sorted(args.usage_dir.glob("*.json")):
+        try:
+            usage_rows.append(json.loads(path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            raise RuntimeError(f"invalid Hermes usage evidence: {path.name}")
     manifest = {
-        "schema": 1,
+        "schema": 2 if args.structured_unanimous else 1,
         "provider": args.provider,
         "model": args.teacher_model,
+        "reasoning_effort": args.reasoning_effort,
         "hermes": args.hermes,
         "ssh": bool(args.ssh_host),
         "seed": args.seed,
-        "weighted_kappa": kappa,
-        "unresolved": unresolved,
+        "labelling_policy": (
+            "three structured blind passes; 3/3 label agreement required"
+            if args.structured_unanimous
+            else "two blind passes with disagreement adjudication"
+        ),
         "labelled_sha256": hashlib.sha256(body.encode()).hexdigest(),
-        "reasoning_recorded": False,
+        "reasoning_recorded": True,
+        "wall_clock_budget_seconds": args.deadline_seconds,
+        "usage": {
+            "files": len(usage_rows),
+            "api_calls": sum(usage_count(row, "api_calls") for row in usage_rows),
+            "input_tokens": sum(usage_count(row, "input_tokens") for row in usage_rows),
+            "output_tokens": sum(usage_count(row, "output_tokens") for row in usage_rows),
+            "reasoning_tokens": sum(
+                usage_count(row, "reasoning_tokens") for row in usage_rows
+            ),
+        },
     }
+    if not args.sealed_output:
+        manifest.update(
+            {
+                "weighted_kappa": kappa,
+                "pairwise_weighted_kappas": kappas,
+                "unresolved": unresolved,
+            }
+        )
     args.manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(manifest, sort_keys=True))
 

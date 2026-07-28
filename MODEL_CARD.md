@@ -1,85 +1,81 @@
-# Model Card: settings-v2
+# Model Card: settings-v2 pragmatic candidate
 
 ## Model details
 
-`settings-v2` is a deterministic multinomial softmax classifier over hashed
-UTF-8 byte n-grams. It predicts the semantic video-duration labels `short`,
-`medium`, and `long`. The active policy profile maps those semantic labels to
-provider settings.
+The v5 `settings-v2` candidate is a purpose-built, quantized semantic encoder:
+two Transformer layers, hidden size 128, four attention heads, FFN size 512,
+an 8,192-token WordPiece vocabulary, and a deterministic 96-token maximum.
+Separate binary heads predict `short` and `long`; structured auxiliary heads
+represent action beats, ordered progression, transformation, and dependent
+actions. Inference is pure Go, offline, and self-contained.
 
-Artifact format v3 records the semantic label order, n-gram configuration,
-hyperparameters, seed, source-manifest digest, training-code commit,
-temperature, class-conditional conformal quantiles, and frozen per-class
-acceptance thresholds. The loader derives the artifact SHA-256.
+The artifact carries the `long-only-pragmatic-v2` decision-policy marker.
+Runtime policy suppresses every learned short decision. Explicit duration
+requests remain deterministic, and `medium` remains the four-second fallback.
 
 ## Intended use
 
-The model is a conservative local component for quota-aware video generation.
-It may override the safe duration only for singleton `short` or `long`
-class-conditional conformal sets that also pass frozen class-specific
-probability thresholds. `medium` is always represented by policy fallback.
-Aspect ratio and resolution are deterministic and outside the model.
+This is a conservative duration selector for quota-aware video generation. It
+may extend a request from four to six seconds when the frozen long head is
+accepted. It cannot shorten a request using a learned decision. Aspect ratio
+and resolution are deterministic and outside the model.
 
-It is not a general text classifier, safety classifier, content moderator, or
-claim about how long a completed video objectively must be.
+It is not a safety classifier, content moderator, general semantic encoder, or
+guarantee of the objectively correct duration.
 
-## Training data
+## Training data and labels
 
-- 3,000 VideoUFO brief captions, stratified by topic and dynamic-degree band,
-  under CC-BY-4.0.
-- 2,000 English, low-NSFW DiffusionDB prompts under CC0.
+The governed corpus contains 15,000 prompts: 14,000 development rows and a
+separate 1,000-row sealed replacement holdout. Rights-cleared VideoUFO
+CC-BY-4.0 captions and DiffusionDB CC0 prompts are filtered for identities,
+URLs, explicit technical settings, unsafe content, exact duplicates, and
+near-duplicate clusters.
 
-URLs, emails, handles, malformed text, explicit technical settings, exact
-duplicates, and normalized token 3-gram Jaccard near-duplicate clusters at
-`>=0.85` are excluded. Non-commercial and upstream-ambiguous datasets are not
-used.
+Three blind, shuffled Sol Ultra teacher passes return only a duration label and
+structured temporal fields. Only unanimous labels train or calibrate an
+override; disagreement expects fallback. Provider, model, effort, source
+revisions, votes, hashes, exclusions, and split membership are recorded.
 
-Teacher labels use the minimum normal-paced clip needed to depict all requested
-action without filler. Hermes runs locally with the exact OpenAI provider/model
-recorded in the manifest, two blind shuffled/permuted passes, and a third
-disagreement pass. Free-form teacher reasoning is not retained.
+## Selection and frozen candidate
 
-## Evaluation protocol
+Five-fold grouped cross-validation used only the 14,000 development rows. The
+pragmatic candidate was fixed in advance as grid candidate 8:
 
-The fixed 5,000 rows are cluster-grouped and source/label stratified:
+- learning rate: 0.0007
+- long-class weight: 0.75
+- contrastive-loss weight: 0.25
+- focal-loss strength: 1.0
 
-- 3,000 training
-- 300 probability calibration
-- 300 class-conditional conformal calibration
-- 400 policy-threshold development
-- 1,000 permanently locked test
+The exact rerun accepted 29 learned-long examples and correctly labelled 23:
+79.31% pooled precision. Fold results were 4/6, 5/6, 3/4, 6/8, and 5/5.
+The one-sided exact 95% lower confidence bound is approximately 63.2%.
 
-Hyperparameters are selected using five-fold grouped cross-validation only
-inside training. Temperature uses only probability calibration. Conformal
-quantiles use only conformal calibration. Short/long thresholds use only policy
-development, from 0.80 through 0.995 in 0.005 steps.
+This does **not** satisfy the original 98% strict gate. That failure remains
+recorded separately. The pragmatic policy instead requires at least 75%
+locked-test precision and at least 20 accepted long examples, with no learned
+short decisions. Its final long threshold maximizes coverage on the dedicated
+policy-development split subject to the same 75% precision target.
 
-Release requires the exact locked gates documented in `scripts/evaluate_model.py`,
-all 619 FETV prompts as external evaluation, and a blinded 200-prompt
-AI-adjudicated audit. Ambiguity counts against overrides.
+The frozen artifact accepted 8 of 1,000 sealed examples, all 8 correct. It
+therefore passed point precision and produced zero learned short decisions,
+but failed the required minimum of 20 accepted examples. FETV and independent
+audit were not run after that terminal gate failure. No release result is
+claimed from those omitted evaluations. The artifact is nevertheless shipped
+in v0.2.0 with these limitations disclosed.
 
-## Results
+## Cost and limitations
 
-The v0.2 training attempt failed before model selection. All 32 permitted
-hyperparameter candidates completed five grouped folds, but every candidate
-accepted zero long overrides. Consequently, zero candidates met the joint
-short/long precision constraint. See `evaluation/cross-validation.json`.
+At current profile estimates, each accepted extension adds $0.10 at 480p or
+$0.14 at 720p compared with the four-second fallback. The CV result implies
+roughly one unnecessary extension in five accepted decisions; that is the
+explicit tradeoff of the pragmatic policy.
 
-No final artifact, locked-test result, FETV result, or independent-audit result
-is claimed, and `evaluation/RELEASE_GATE_PASSED` does not exist. A provisional
-holdout inspected during engineering diagnosis is invalid for any later
-release. Retrying requires a genuinely untouched corpus and a pre-registered
-model-family revision; the criteria must not be weakened.
-
-## Limitations
-
-Short prompts, unusual grammar, multilingual text, adversarial instructions,
-new video domains, and distribution shift may force fallback or produce an
-incorrect label. Precision and quota protection intentionally outrank coverage.
-Price estimates are dated metadata, not billing guarantees.
+Results may degrade on multilingual, unusual, adversarial, or shifted input.
+Cross-validation is not a production accuracy guarantee. No conformal
+guarantee is claimed under distribution shift.
 
 ## License and attribution
 
-The model is CC-BY-4.0. Attribute VideoUFO and its authors as described in
-`THIRD_PARTY_NOTICES.md`. DiffusionDB is CC0; FETV is evaluation-only and
-CC-BY-4.0.
+The model is CC-BY-4.0 with VideoUFO attribution. The compact teacher encoder
+is Apache-2.0. DiffusionDB is CC0; FETV is evaluation-only and CC-BY-4.0.
+See `THIRD_PARTY_NOTICES.md`.

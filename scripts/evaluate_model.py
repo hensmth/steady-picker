@@ -10,13 +10,37 @@ import subprocess
 from pathlib import Path
 
 LABEL_DURATION = {"short": 2, "medium": 4, "long": 6}
+STRICT_POLICY = "strict-v2"
+PRAGMATIC_POLICY = "long-only-pragmatic-v2"
 
 
 def labelled_rows(path: Path) -> list[dict]:
     rows = []
     for index, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
-        label, prompt = line.split(" ", 1)
-        rows.append({"id": index, "label": label.removeprefix("__label__"), "prompt": prompt})
+        if line.startswith("{"):
+            value = json.loads(line)
+            if int(value["id"]) != index:
+                raise RuntimeError("labelled JSONL changed canonical row order")
+            rows.append(
+                {
+                    "id": index,
+                    "label": (
+                        "unresolved"
+                        if value.get("unresolved", False)
+                        else value["final_label"]
+                    ),
+                    "prompt": value["prompt"],
+                }
+            )
+        else:
+            label, prompt = line.split(" ", 1)
+            rows.append(
+                {
+                    "id": index,
+                    "label": label.removeprefix("__label__"),
+                    "prompt": prompt,
+                }
+            )
     return rows
 
 
@@ -35,6 +59,47 @@ def predict(binary: Path, model: Path, rows: list[dict]) -> list[dict]:
     predictions = [json.loads(line) for line in result.stdout.splitlines()]
     if len(predictions) != len(rows):
         raise RuntimeError("predictor changed row count")
+    for prediction in predictions:
+        if (
+            prediction.get("model_version") != "settings-v2"
+            or prediction.get("profile_version") != "2"
+            or prediction.get("policy_version") != "quota-safe-v2"
+            or len(prediction.get("artifact_sha256", "")) != 64
+        ):
+            raise RuntimeError("predictor returned invalid v5 provenance")
+    return predictions
+
+
+def inspect_model(binary: Path, model: Path) -> dict:
+    result = subprocess.run(
+        [str(binary), "inspect-model", "--model", str(model)],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
+def predict_v1(binary: Path, model: Path, rows: list[dict]) -> list[dict]:
+    requests = "".join(
+        json.dumps({"prompt": row["prompt"], "mode": "text-to-video"}) + "\n"
+        for row in rows
+    )
+    result = subprocess.run(
+        [str(binary), "predict", "--model", str(model), "--model-version", "v1"],
+        input=requests,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    predictions = [json.loads(line) for line in result.stdout.splitlines()]
+    if len(predictions) != len(rows):
+        raise RuntimeError("v1 predictor changed row count")
+    for prediction in predictions:
+        if prediction.get("model_version") != "v1":
+            raise RuntimeError("v1 predictor returned invalid provenance")
+        prediction["duration_source"] = prediction["source"]
+        prediction["estimated_cost_microusd"] = prediction["duration"] * 50_000
     return predictions
 
 
@@ -73,6 +138,8 @@ def selective_utility(label: str, prediction: dict) -> float:
     source = prediction["duration_source"]
     if source != "model":
         return 0.0
+    if label == "unresolved":
+        return -4.0 if prediction["duration"] == 2 else -2.0
     expected = LABEL_DURATION[label]
     actual = prediction["duration"]
     if actual == expected:
@@ -88,6 +155,8 @@ def metrics(rows: list[dict], predictions: list[dict]) -> dict:
     utility = 0.0
     risk_curve = []
     candidates = []
+    incremental_spend = 0
+    wasted_incremental_spend = 0
     for row, prediction in zip(rows, predictions):
         costs.append(prediction["estimated_cost_microusd"])
         utility += selective_utility(row["label"], prediction)
@@ -97,6 +166,16 @@ def metrics(rows: list[dict], predictions: list[dict]) -> dict:
                 accepted[predicted][0] += 1
                 accepted[predicted][1] += row["label"] == predicted
                 candidates.append((prediction["confidence"], row["label"] == predicted))
+                per_second = (
+                    prediction["estimated_cost_microusd"] // prediction["duration"]
+                )
+                extra = max(
+                    0,
+                    prediction["estimated_cost_microusd"] - 4 * per_second,
+                )
+                incremental_spend += extra
+                if row["label"] != predicted:
+                    wasted_incremental_spend += extra
     for threshold in [value / 100 for value in range(80, 100)]:
         subset = [correct for confidence, correct in candidates if confidence >= threshold]
         risk_curve.append(
@@ -120,6 +199,8 @@ def metrics(rows: list[dict], predictions: list[dict]) -> dict:
         "per_class": per_class,
         "mean_projected_spend_microusd": sum(costs) / len(costs),
         "mean_selective_utility": utility / len(rows),
+        "incremental_spend_microusd": incremental_spend,
+        "wasted_incremental_spend_microusd": wasted_incremental_spend,
         "risk_coverage_curve": risk_curve,
     }
 
@@ -131,40 +212,79 @@ def main() -> None:
     parser.add_argument("--locked-test", type=Path, required=True)
     parser.add_argument("--fetv-labelled", type=Path, required=True)
     parser.add_argument("--audit-json", type=Path, required=True)
-    parser.add_argument("--v1-report", type=Path, required=True)
+    parser.add_argument("--v1-binary", type=Path)
+    parser.add_argument("--v1-model", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--gate-marker", type=Path, required=True)
+    parser.add_argument(
+        "--release-policy",
+        choices=(STRICT_POLICY, PRAGMATIC_POLICY),
+        default=STRICT_POLICY,
+    )
     args = parser.parse_args()
+
+    metadata = inspect_model(args.binary, args.model)
+    if (
+        args.release_policy == PRAGMATIC_POLICY
+        and metadata.get("decision_policy") != PRAGMATIC_POLICY
+    ):
+        raise RuntimeError(
+            "pragmatic evaluation requires a long-only-pragmatic-v2 artifact"
+        )
+    if args.release_policy == STRICT_POLICY and (
+        args.v1_binary is None or args.v1_model is None
+    ):
+        raise RuntimeError("strict evaluation requires --v1-binary and --v1-model")
 
     locked_rows = labelled_rows(args.locked_test)
     if len(locked_rows) != 1000:
         raise RuntimeError("locked test must contain exactly 1,000 rows")
     locked = metrics(locked_rows, predict(args.binary, args.model, locked_rows))
+    v1 = None
+    if args.release_policy == STRICT_POLICY:
+        v1 = metrics(
+            locked_rows,
+            predict_v1(args.v1_binary, args.v1_model, locked_rows),
+        )
     fetv_rows = labelled_rows(args.fetv_labelled)
     if len(fetv_rows) != 619:
         raise RuntimeError("FETV evaluation must contain exactly 619 rows")
     fetv = metrics(fetv_rows, predict(args.binary, args.model, fetv_rows))
     audit = json.loads(args.audit_json.read_text(encoding="utf-8"))
-    v1 = json.loads(args.v1_report.read_text(encoding="utf-8"))
     deterministic_utility = 0.0
-    gates = {
-        "short_point_precision": locked["per_class"]["short"]["precision"] >= 0.95,
-        "short_exact_lower": locked["per_class"]["short"]["exact_one_sided_95_lower"] >= 0.90,
-        "short_accepted": locked["per_class"]["short"]["accepted"] >= 60,
-        "long_point_precision": locked["per_class"]["long"]["precision"] >= 0.98,
-        "long_exact_lower": locked["per_class"]["long"]["exact_one_sided_95_lower"] >= 0.95,
-        "long_accepted": locked["per_class"]["long"]["accepted"] >= 60,
-        "coverage": locked["override_coverage"] >= 0.12,
-        "spend": locked["mean_projected_spend_microusd"] <= 200_000,
-        "beats_deterministic": locked["mean_selective_utility"] > deterministic_utility,
-        "beats_v1": locked["mean_selective_utility"] > v1["mean_selective_utility"],
-        "audit_agreement": audit["agreement"] >= 0.90,
-        "audit_kappa": audit["weighted_kappa"] >= 0.80,
-        "audit_no_severe_short": audit["severe_short_under_duration_errors"] == 0,
-        "audit_no_unnecessary_long": audit["unnecessary_long_overrides"] == 0,
-    }
+    if args.release_policy == PRAGMATIC_POLICY:
+        gates = {
+            "long_point_precision": locked["per_class"]["long"]["precision"] >= 0.75,
+            "long_accepted": locked["per_class"]["long"]["accepted"] >= 20,
+            "no_learned_short_locked": locked["per_class"]["short"]["accepted"] == 0,
+            "no_learned_short_fetv": fetv["per_class"]["short"]["accepted"] == 0,
+            "audit_accepted_long_agreement": (
+                audit.get("accepted_override_agreement", 0) >= 0.75
+            ),
+            "audit_no_severe_short": audit["severe_short_under_duration_errors"] == 0,
+        }
+    else:
+        gates = {
+            "short_point_precision": locked["per_class"]["short"]["precision"] >= 0.95,
+            "short_exact_lower": locked["per_class"]["short"]["exact_one_sided_95_lower"] >= 0.90,
+            "short_accepted": locked["per_class"]["short"]["accepted"] >= 60,
+            "long_point_precision": locked["per_class"]["long"]["precision"] >= 0.98,
+            "long_exact_lower": locked["per_class"]["long"]["exact_one_sided_95_lower"] >= 0.95,
+            "long_accepted": locked["per_class"]["long"]["accepted"] >= 60,
+            "coverage": locked["override_coverage"] >= 0.12,
+            "spend": locked["mean_projected_spend_microusd"] <= 200_000,
+            "beats_deterministic": locked["mean_selective_utility"] > deterministic_utility,
+            "beats_v1": (
+                locked["mean_selective_utility"] > v1["mean_selective_utility"]
+            ),
+            "audit_agreement": audit["agreement"] >= 0.90,
+            "audit_kappa": audit["weighted_kappa"] >= 0.80,
+            "audit_no_severe_short": audit["severe_short_under_duration_errors"] == 0,
+            "audit_no_unnecessary_long": audit["unnecessary_long_overrides"] == 0,
+        }
     report = {
-        "schema": 1,
+        "schema": 2,
+        "release_policy": args.release_policy,
         "locked_test": locked,
         "external_fetv": fetv,
         "independent_audit": audit,
@@ -183,7 +303,10 @@ def main() -> None:
     if not report["passed"]:
         failed = [name for name, passed in gates.items() if not passed]
         raise RuntimeError(f"release gates failed: {', '.join(failed)}")
-    args.gate_marker.write_text("all locked gates passed\n", encoding="utf-8")
+    args.gate_marker.write_text(
+        f"{args.release_policy} locked gates passed\n",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":

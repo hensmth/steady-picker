@@ -1,0 +1,383 @@
+package steady
+
+import (
+	"encoding/binary"
+	"encoding/json"
+	"math"
+	"os"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestSemanticV5RoundTripAndDecisions(t *testing.T) {
+	shortArtifact := semanticTestArtifact(t, []float32{8, -8})
+	if len(shortArtifact) >= 32<<20 {
+		t.Fatalf("v5 test artifact is too large: %d bytes", len(shortArtifact))
+	}
+	shortModel, err := LoadBytes(shortArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := shortModel.Metadata().ArtifactFormat; got != 5 {
+		t.Fatalf("artifact format = %d, want 5", got)
+	}
+	short := shortModel.Classify("A bird hops once.")
+	if len(short.Kinds) != 1 || short.Kinds[0] != "short" {
+		t.Fatalf("short decision = %#v", short)
+	}
+
+	longArtifact := semanticTestArtifact(t, []float32{-8, 8})
+	longModel, err := LoadBytes(longArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	long := longModel.Classify("First a seed sprouts, then it blooms, and finally wilts.")
+	if len(long.Kinds) != 1 || long.Kinds[0] != "long" {
+		t.Fatalf("long decision = %#v", long)
+	}
+	fallback := longModel.Classify("A landscape.")
+	if len(fallback.Kinds) != 1 || fallback.Kinds[0] != "medium" {
+		t.Fatalf("cue-ineligible long decision = %#v", fallback)
+	}
+}
+
+func TestSemanticV5LongOnlyPolicyDisablesLearnedShort(t *testing.T) {
+	shortModel, err := LoadBytes(semanticTestArtifact(t, []float32{8, -8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shortModel.metadata.ArtifactSHA256 = ""
+	shortModel.metadata.DecisionPolicy = DecisionPolicyLongOnlyPragmaticV2
+	artifact, err := marshalSemanticModel(shortModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shortModel, err = LoadBytes(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	classified := shortModel.Classify("A bird hops once.")
+	if len(classified.Kinds) != 1 || classified.Kinds[0] != "medium" {
+		t.Fatalf("long-only short classification = %#v", classified)
+	}
+	result, err := PickSettings(shortModel, QuotaSafeProfile(), PickRequest{
+		Prompt: "A bird hops once.", Mode: TextToVideo,
+	})
+	if err != nil || result.Duration != 4 || result.DurationSource != "fallback" {
+		t.Fatalf("long-only short policy = %+v %v", result, err)
+	}
+	explicit, err := PickSettings(shortModel, QuotaSafeProfile(), PickRequest{
+		Prompt: "A bird hops once.", Mode: TextToVideo, Duration: 2,
+	})
+	if err != nil || explicit.Duration != 2 || explicit.DurationSource != "explicit" {
+		t.Fatalf("long-only explicit short = %+v %v", explicit, err)
+	}
+
+	longModel, err := LoadBytes(semanticTestArtifact(t, []float32{-8, 8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	longModel.metadata.ArtifactSHA256 = ""
+	longModel.metadata.DecisionPolicy = DecisionPolicyLongOnlyPragmaticV2
+	artifact, err = marshalSemanticModel(longModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	longModel, err = LoadBytes(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = PickSettings(longModel, QuotaSafeProfile(), PickRequest{
+		Prompt: "First a seed sprouts, then it blooms, and finally wilts.",
+		Mode:   TextToVideo,
+	})
+	if err != nil || result.Duration != 6 || result.DurationSource != "model" {
+		t.Fatalf("long-only long policy = %+v %v", result, err)
+	}
+}
+
+func TestSemanticV5RejectsMalformedPayload(t *testing.T) {
+	artifact := semanticTestArtifact(t, []float32{8, -8})
+	if _, err := LoadBytes(artifact[:len(artifact)-1]); err == nil ||
+		!strings.Contains(err.Error(), "payload") {
+		t.Fatalf("truncated v5 error = %v", err)
+	}
+}
+
+func TestSemanticV5RejectsNonFiniteQuantizationScale(t *testing.T) {
+	artifact := semanticTestArtifact(t, []float32{8, -8})
+	metadataLength := int(binary.LittleEndian.Uint32(artifact[8:12]))
+	payloadStart := modelHeaderSize + metadataLength
+	firstScale := payloadStart + semanticVocabSize*semanticHidden
+	binary.LittleEndian.PutUint32(
+		artifact[firstScale:],
+		math.Float32bits(float32(math.NaN())),
+	)
+	if _, err := LoadBytes(artifact); err == nil ||
+		!strings.Contains(err.Error(), "numeric") {
+		t.Fatalf("non-finite v5 error = %v", err)
+	}
+}
+
+func TestSemanticV5MetadataIsCallerOwned(t *testing.T) {
+	model, err := LoadBytes(semanticTestArtifact(t, []float32{8, -8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata := model.Metadata()
+	metadata.Vocabulary[0] = "changed"
+	metadata.AuxiliaryHeads[0] = "changed"
+	got := model.Metadata()
+	if got.Vocabulary[0] != "[PAD]" || got.AuxiliaryHeads[0] != "beats_1" {
+		t.Fatal("Metadata returned model-owned semantic slices")
+	}
+}
+
+func TestSemanticV5WordPieceFailureReplacesWholeWord(t *testing.T) {
+	model, err := LoadBytes(semanticTestArtifact(t, []float32{8, -8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	work := model.newWorkspace()
+	count := model.semantic.tokenize("azzz", work)
+	got := work.tokenIDs[:count]
+	want := []int{2, 1, 3}
+	if len(got) != len(want) {
+		t.Fatalf("tokens = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("tokens = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestSemanticV5SharedModel100000Predictions(t *testing.T) {
+	model, err := LoadBytes(semanticTestArtifact(t, []float32{8, -8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const workers = 100
+	const perWorker = 1000
+	var wait sync.WaitGroup
+	wait.Add(workers)
+	for range workers {
+		go func() {
+			defer wait.Done()
+			for range perWorker {
+				result := model.Classify("a")
+				if len(result.Kinds) != 1 || result.Kinds[0] != "short" {
+					t.Errorf("concurrent v5 decision = %#v", result)
+					return
+				}
+			}
+		}()
+	}
+	wait.Wait()
+}
+
+func BenchmarkSemanticV5Prediction(b *testing.B) {
+	artifact := semanticTestArtifact(b, []float32{8, -8})
+	model, err := LoadBytes(artifact)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if _, _, ok := model.pickDecision("a bird hops once"); !ok {
+			b.Fatal("semantic decision was not accepted")
+		}
+	}
+}
+
+func BenchmarkExternalSemanticV5Prediction(b *testing.B) {
+	path := os.Getenv("STEADY_BENCH_MODEL")
+	if path == "" {
+		b.Skip("STEADY_BENCH_MODEL is not set")
+	}
+	model, err := Load(path)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if model.Metadata().ArtifactFormat != 5 {
+		b.Fatal("external benchmark requires artifact format v5")
+	}
+	prompt := "First a seed sprouts, then grows, and finally blooms."
+	_, _, _ = model.pickDecision(prompt)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_, _, _ = model.pickDecision(prompt)
+	}
+}
+
+func TestExternalSemanticV5P95Latency(t *testing.T) {
+	modelPath := os.Getenv("STEADY_BENCH_MODEL")
+	promptsPath := os.Getenv("STEADY_BENCH_PROMPTS")
+	if modelPath == "" || promptsPath == "" {
+		t.Skip("STEADY_BENCH_MODEL and STEADY_BENCH_PROMPTS are not set")
+	}
+	model, err := Load(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(promptsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var prompts []string
+	for _, line := range strings.Split(string(body), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var row struct {
+			Prompt string `json:"prompt"`
+		}
+		if err := json.Unmarshal([]byte(line), &row); err != nil || row.Prompt == "" {
+			t.Fatalf("invalid latency prompt: %v", err)
+		}
+		prompts = append(prompts, row.Prompt)
+	}
+	if len(prompts) < 100 {
+		t.Fatal("latency evidence requires at least 100 prompts")
+	}
+	_, _, _ = model.pickDecision(prompts[0])
+	durations := make([]time.Duration, len(prompts))
+	for index, prompt := range prompts {
+		start := time.Now()
+		_, _, _ = model.pickDecision(prompt)
+		durations[index] = time.Since(start)
+	}
+	slices.Sort(durations)
+	p95 := durations[(len(durations)*95+99)/100-1]
+	t.Logf("semantic p95=%s across %d prompts", p95, len(prompts))
+	if p95 > 30*time.Millisecond {
+		t.Fatalf("semantic p95 %s exceeds 30ms", p95)
+	}
+}
+
+func semanticTestArtifact(t testing.TB, durationBias []float32) []byte {
+	t.Helper()
+	vocabulary := make([]string, semanticVocabSize)
+	copy(vocabulary, []string{
+		"[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]",
+		"a", "bird", "hop", "##s", "once", ".", "first", "seed", "sprout",
+		"then", "it", "bloom", "finally", "wilt", "landscape",
+	})
+	for index := 20; index < len(vocabulary); index++ {
+		vocabulary[index] = "[unused-" + fixedDecimal(index) + "]"
+	}
+	metadata := Metadata{
+		ArtifactFormat:       5,
+		ModelID:              "settings-v2",
+		Task:                 "video-duration-selection",
+		Labels:               []string{"short", "medium", "long"},
+		PolicyCompatibility:  "quota-safe-v2",
+		MinN:                 1,
+		MaxN:                 1,
+		Bucket:               1,
+		Dimension:            semanticHidden,
+		Epochs:               1,
+		LearningRate:         0.001,
+		L2:                   0.01,
+		Alpha:                0.1,
+		Seed:                 42,
+		SourceManifestSHA256: strings.Repeat("0", 64),
+		TrainingCodeCommit:   "test",
+		ModelFamily:          "distilled-semantic-transformer-v1",
+		FeatureSchema:        "wordpiece-transformer-temporal-aux-v1",
+		Heads:                []string{"short", "long"},
+		PositiveClassWeights: []float64{1, 1},
+		Tokenizer:            "wordpiece-v1",
+		Vocabulary:           vocabulary,
+		MaxTokens:            semanticMaxTokens,
+		Layers:               semanticLayers,
+		AttentionHeads:       semanticHeads,
+		HiddenSize:           semanticHidden,
+		IntermediateSize:     semanticFFN,
+		Quantization:         "int8-per-output-channel-f32-layernorm",
+		AuxiliaryHeads: []string{
+			"beats_1", "beats_2", "beats_3",
+			"ordered", "transformation", "dependent_actions",
+		},
+		TeacherEncoder:    "sentence-transformers/paraphrase-MiniLM-L3-v2",
+		TrainingProvider:  "openai-codex",
+		TrainingModel:     "gpt-5.6-sol",
+		TrainingEffort:    "ultra",
+		TrainingBackend:   "pytorch-cpu-deterministic",
+		TrainingToolchain: "python=3.13;torch=2.13.0;numpy=2.2.6;sentence-transformers=5.1.0",
+	}
+	zeroMatrix := func(rows, columns int, bias bool) quantizedMatrix {
+		matrix := quantizedMatrix{
+			rows: rows, cols: columns,
+			weights: make([]int8, rows*columns),
+			scales:  make([]float32, rows),
+		}
+		if bias {
+			matrix.bias = make([]float32, rows)
+		}
+		return matrix
+	}
+	norm := func() layerNormWeights {
+		gamma := make([]float32, semanticHidden)
+		for index := range gamma {
+			gamma[index] = 1
+		}
+		return layerNormWeights{
+			gamma: gamma,
+			beta:  make([]float32, semanticHidden),
+		}
+	}
+	semantic := &semanticModel{
+		tokenEmbeddings:    zeroMatrix(semanticVocabSize, semanticHidden, false),
+		positionEmbeddings: zeroMatrix(semanticMaxTokens, semanticHidden, false),
+		embeddingNorm:      norm(),
+		vocabulary:         vocabulary,
+		maxTokens:          semanticMaxTokens,
+		hidden:             semanticHidden,
+		attentionHeads:     semanticHeads,
+		intermediate:       semanticFFN,
+		layers:             make([]semanticLayer, semanticLayers),
+	}
+	for index := range semantic.layers {
+		semantic.layers[index] = semanticLayer{
+			query:           zeroMatrix(semanticHidden, semanticHidden, true),
+			key:             zeroMatrix(semanticHidden, semanticHidden, true),
+			value:           zeroMatrix(semanticHidden, semanticHidden, true),
+			attentionOutput: zeroMatrix(semanticHidden, semanticHidden, true),
+			attentionNorm:   norm(),
+			feedForwardIn:   zeroMatrix(semanticFFN, semanticHidden, true),
+			feedForwardOut:  zeroMatrix(semanticHidden, semanticFFN, true),
+			outputNorm:      norm(),
+		}
+	}
+	semantic.durationHeads = zeroMatrix(2, semanticHidden, true)
+	copy(semantic.durationHeads.bias, durationBias)
+	semantic.auxiliaryHeads = zeroMatrix(semanticAuxHeads, semanticHidden, true)
+	model := &Model{
+		metadata:     metadata,
+		semantic:     semantic,
+		temperatures: []float32{1, 1},
+		quantiles:    []float32{0.1, 0.1, 0.1, 0.1},
+		thresholds:   []float32{0.8, 0.8},
+	}
+	artifact, err := marshalSemanticModel(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return artifact
+}
+
+func fixedDecimal(value int) string {
+	const digits = "0123456789"
+	var buffer [5]byte
+	for index := len(buffer) - 1; index >= 0; index-- {
+		buffer[index] = digits[value%10]
+		value /= 10
+	}
+	return string(buffer[:])
+}

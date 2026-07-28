@@ -32,5 +32,13 @@ is licensed under CC-BY-4.0.
 - Project: https://github.com/llyx97/FETV
 - Paper: https://arxiv.org/abs/2311.01813
 
+## paraphrase-MiniLM-L3-v2
+
+The semantic retraining pipeline uses
+[`sentence-transformers/paraphrase-MiniLM-L3-v2`](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L3-v2)
+at its recorded immutable revision as the teacher encoder. The teacher is
+licensed under Apache-2.0. It is used during training only; its weights are not
+shipped in the SteadyPicker executable or student artifact.
+
 No VidProM, Panda-70M, OpenVid, WebVid, or other non-commercial or
 upstream-ambiguous dataset is included.

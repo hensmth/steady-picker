@@ -66,7 +66,7 @@ func loadProfile(name, path string) (steady.Profile, error) {
 
 func predict(args []string) {
 	flags := flag.NewFlagSet("predict", flag.ExitOnError)
-	modelPath := flags.String("model", "", "optional custom v3 artifact")
+	modelPath := flags.String("model", "", "optional custom v3/v4/v5 artifact")
 	profileName := flags.String("profile", steady.ProfileQuotaSafeV2, "embedded profile")
 	profilePath := flags.String("profile-file", "", "custom profile JSON")
 	_ = flags.Parse(args)
@@ -114,7 +114,7 @@ func predict(args []string) {
 
 func inspectModel(args []string) {
 	flags := flag.NewFlagSet("inspect-model", flag.ExitOnError)
-	path := flags.String("model", "", "optional custom v3 artifact")
+	path := flags.String("model", "", "optional custom v3/v4/v5 artifact")
 	_ = flags.Parse(args)
 	model, err := loadModel(*path)
 	if err != nil {
@@ -127,7 +127,7 @@ func inspectModel(args []string) {
 
 func health(args []string) {
 	flags := flag.NewFlagSet("health", flag.ExitOnError)
-	path := flags.String("model", "", "optional custom v3 artifact")
+	path := flags.String("model", "", "optional custom v3/v4/v5 artifact")
 	_ = flags.Parse(args)
 	model, err := loadModel(*path)
 	if err != nil {
@@ -147,8 +147,12 @@ func health(args []string) {
 		ready = false
 	}
 	fmt.Printf(
-		"{\"status\":%q,\"ready\":%t,\"model_version\":%q,\"artifact_sha256\":%q}\n",
-		status, ready, metadata.ModelID, metadata.ArtifactSHA256,
+		"{\"status\":%q,\"ready\":%t,\"model_version\":%q,"+
+			"\"artifact_format\":%d,\"policy_version\":%q,"+
+			"\"decision_policy\":%q,\"artifact_sha256\":%q}\n",
+		status, ready, metadata.ModelID, metadata.ArtifactFormat,
+		steady.ProfileQuotaSafeV2, metadata.DecisionPolicy,
+		metadata.ArtifactSHA256,
 	)
 }
 
@@ -171,10 +175,16 @@ func train(args []string) {
 	flags.IntVar(&cfg.Epochs, "epochs", cfg.Epochs, "epochs")
 	lr := flags.Float64("learning-rate", float64(cfg.LearningRate), "learning rate")
 	l2 := flags.Float64("l2", float64(cfg.L2), "L2 regularization")
+	positiveWeightScale := flags.Float64(
+		"positive-weight-scale",
+		float64(cfg.PositiveWeightScale),
+		"minority positive-class weight multiplier",
+	)
 	flags.StringVar(&cfg.SourceManifestSHA256, "source-manifest-sha256", "", "source manifest SHA-256")
 	flags.StringVar(&cfg.TrainingCodeCommit, "training-code-commit", "", "training code commit")
 	_ = flags.Parse(args)
 	cfg.LearningRate, cfg.L2 = float32(*lr), float32(*l2)
+	cfg.PositiveWeightScale = float32(*positiveWeightScale)
 	if err := steady.Train(cfg); err != nil {
 		fatal("train: %v", err)
 	}

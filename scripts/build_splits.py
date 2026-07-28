@@ -18,6 +18,13 @@ TARGETS = {
     "locked_test": 1000,
 }
 FIT_SPLITS = {"train", "probability_calibration", "conformal_calibration"}
+MIN_LABELS = {
+    "train": {"short": 140, "medium": 140, "long": 120},
+    "probability_calibration": {"short": 25, "medium": 25, "long": 20},
+    "conformal_calibration": {"short": 25, "medium": 25, "long": 20},
+    "policy_development": {"short": 50, "medium": 50, "long": 50},
+    "locked_test": {"short": 150, "medium": 150, "long": 150},
+}
 
 
 def main() -> None:
@@ -30,6 +37,17 @@ def main() -> None:
     rows = [json.loads(line) for line in args.input.read_text(encoding="utf-8").splitlines()]
     if len(rows) != 5000:
         raise RuntimeError("expected exactly 5,000 labelled rows")
+    resolved_counts = collections.Counter(
+        row["final_label"] for row in rows if not row["unresolved"]
+    )
+    if (
+        resolved_counts["short"] < 400
+        or resolved_counts["medium"] < 400
+        or resolved_counts["long"] < 400
+    ):
+        raise RuntimeError(
+            f"fresh corpus has insufficient resolved class support: {dict(resolved_counts)}"
+        )
     clusters: dict[str, list[dict]] = collections.defaultdict(list)
     for row in rows:
         clusters[row["cluster_id"]].append(row)
@@ -67,10 +85,23 @@ def main() -> None:
         def score(name: str) -> tuple[float, int, str]:
             size_deficit = (TARGETS[name] - len(assigned[name])) / TARGETS[name]
             stratification = 0.0
+            minimum_deficit = 0
             for stratum, count in cluster_strata.items():
                 desired = total_strata[stratum] * TARGETS[name] / len(rows)
                 stratification += max(0.0, desired - strata[name][stratum]) * count
-            return (stratification + size_deficit, TARGETS[name] - len(assigned[name]), name)
+                label = stratum[1]
+                if label in MIN_LABELS[name]:
+                    current = sum(
+                        value
+                        for (source, current_label), value in strata[name].items()
+                        if current_label == label
+                    )
+                    minimum_deficit += max(0, MIN_LABELS[name][label] - current) * count
+            return (
+                minimum_deficit * 1000 + stratification + size_deficit,
+                TARGETS[name] - len(assigned[name]),
+                name,
+            )
 
         destination = max(options, key=score)
         assigned[destination].extend(cluster_rows)
@@ -78,15 +109,24 @@ def main() -> None:
     sizes = {name: len(values) for name, values in assigned.items()}
     if sizes != TARGETS:
         raise RuntimeError(f"split sizes are not exact: {sizes}")
+    for name, minimums in MIN_LABELS.items():
+        counts = collections.Counter(
+            row["final_label"] for row in assigned[name] if not row["unresolved"]
+        )
+        for label, minimum in minimums.items():
+            if counts[label] < minimum:
+                raise RuntimeError(
+                    f"{name} has {counts[label]} {label} rows, need {minimum}"
+                )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     membership: list[dict] = []
     hashes: dict[str, str] = {}
     for name, split_rows in assigned.items():
         split_rows.sort(key=lambda row: row["id"])
         labelled = "".join(
-            f"__label__{row['final_label']} {row['prompt']}\n"
+            f"__label__{row['final_label'] or 'unresolved'} {row['prompt']}\n"
             for row in split_rows
-            if not row["unresolved"]
+            if not row["unresolved"] or name == "locked_test"
         )
         path = args.output_dir / f"{name}.txt"
         path.write_text(labelled, encoding="utf-8")

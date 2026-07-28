@@ -97,6 +97,47 @@ def token_trigrams(text: str) -> frozenset[tuple[str, str, str]]:
     return frozenset(zip(tokens, tokens[1:], tokens[2:]))
 
 
+def load_exclusions(paths: list[Path]) -> tuple[set[str], dict[tuple[str, str, str], list[frozenset]], list[dict]]:
+    exact: set[str] = set()
+    index: dict[tuple[str, str, str], list[frozenset]] = collections.defaultdict(list)
+    manifests: list[dict] = []
+    for path in paths:
+        digest = file_sha256(path)
+        count = 0
+        for line in path.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            prompt = normalize(row.get("prompt"))
+            if not prompt:
+                continue
+            exact.add(prompt.casefold())
+            grams = token_trigrams(prompt)
+            for gram in grams:
+                index[gram].append(grams)
+            count += 1
+        manifests.append({"sha256": digest, "rows": count})
+    return exact, index, manifests
+
+
+def excluded_near_duplicate(
+    prompt: str,
+    exact: set[str],
+    index: dict[tuple[str, str, str], list[frozenset]],
+    threshold: float = 0.85,
+) -> bool:
+    if prompt.casefold() in exact:
+        return True
+    grams = token_trigrams(prompt)
+    candidates: dict[frozenset, None] = {}
+    for gram in grams:
+        for other in index.get(gram, ()):
+            candidates[other] = None
+    for other in candidates:
+        union = len(grams | other)
+        if union and len(grams & other) / union >= threshold:
+            return True
+    return False
+
+
 def temporal_complexity(text: str) -> int:
     """Score rubric-relevant progression cues without assigning a label."""
     return (
@@ -129,7 +170,7 @@ def near_duplicate_clusters(rows: list[dict], threshold: float = 0.85) -> None:
         row["cluster_id"] = f"cluster-{cluster:05d}"
 
 
-def fetch_videoufo(limit: int, cache: Path, seed: int) -> list[dict]:
+def fetch_videoufo(limit: int, cache: Path, seed: int, cache_only: bool = False) -> list[dict]:
     cache.mkdir(parents=True, exist_ok=True)
     candidates: list[dict] = []
     first_page = cache / "0000000.json"
@@ -140,7 +181,11 @@ def fetch_videoufo(limit: int, cache: Path, seed: int) -> list[dict]:
         with urllib.request.urlopen(f"{VIDEOUFO_ROWS}?{query}", timeout=60) as response:
             first_page.write_text(json.dumps(json.load(response)), encoding="utf-8")
     total_rows = json.loads(first_page.read_text(encoding="utf-8"))["num_rows_total"]
-    offsets = list(range(0, total_rows, 100))
+    offsets = (
+        [int(path.stem) for path in cache.glob("*.json")]
+        if cache_only
+        else list(range(0, total_rows, 100))
+    )
     random.Random(seed).shuffle(offsets)
     if 0 in offsets:
         offsets.remove(0)
@@ -221,7 +266,7 @@ def round_robin_strata(rows: list[dict], count: int, seed: int) -> list[dict]:
 
 
 def select_stratified_videoufo(
-    rows: list[dict], count: int, temporal_count: int, seed: int
+    rows: list[dict], count: int, temporal_count: int, seed: int, temporal_min_score: int
 ) -> list[dict]:
     unique: list[dict] = []
     seen: set[str] = set()
@@ -231,7 +276,7 @@ def select_stratified_videoufo(
             seen.add(key)
             unique.append(row)
     temporal = round_robin_strata(
-        [row for row in unique if row["temporal_complexity"] >= 3],
+        [row for row in unique if row["temporal_complexity"] >= temporal_min_score],
         temporal_count,
         seed + 1,
     )
@@ -313,30 +358,59 @@ def main() -> None:
     parser.add_argument("--extras-output", type=Path)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--videoufo-pool", type=int, default=12_000)
+    parser.add_argument("--videoufo-cache-only", action="store_true")
     parser.add_argument("--video-temporal", type=int, default=550)
     parser.add_argument("--diffusion-temporal", type=int, default=1450)
+    parser.add_argument("--temporal-min-score", type=int, default=3)
+    parser.add_argument(
+        "--exclude",
+        type=Path,
+        action="append",
+        default=[],
+        help="prior JSONL corpus to exclude by exact and near-duplicate prompt",
+    )
     args = parser.parse_args()
 
     with urllib.request.urlopen("https://huggingface.co/api/datasets/WenhaoWang/VideoUFO", timeout=30) as response:
         if json.load(response)["sha"] != VIDEOUFO_REVISION:
             raise RuntimeError("VideoUFO revision changed; review and pin before rebuilding")
     video_candidates = fetch_videoufo(
-        args.videoufo_pool, args.cache / "videoufo-pages", args.seed
+        args.videoufo_pool,
+        args.cache / "videoufo-pages",
+        args.seed,
+        args.videoufo_cache_only,
     )
+    excluded_exact, excluded_index, exclusion_manifests = load_exclusions(args.exclude)
+    video_candidates = [
+        row
+        for row in video_candidates
+        if not excluded_near_duplicate(
+            row["prompt"], excluded_exact, excluded_index
+        )
+    ]
     video = select_stratified_videoufo(
         video_candidates,
         3000,
         args.video_temporal,
         args.seed,
+        args.temporal_min_score,
     )
     diffusion_candidates = fetch_diffusiondb(args.cache, 120_000, args.seed)
+    diffusion_candidates = [
+        row
+        for row in diffusion_candidates
+        if not excluded_near_duplicate(
+            row["prompt"], excluded_exact, excluded_index
+        )
+    ]
     video_prompts = {row["prompt"].casefold() for row in video}
     eligible_diffusion = [
         row for row in diffusion_candidates
         if row["prompt"].casefold() not in video_prompts
     ]
     temporal_diffusion = [
-        row for row in eligible_diffusion if row["temporal_complexity"] >= 3
+        row for row in eligible_diffusion
+        if row["temporal_complexity"] >= args.temporal_min_score
     ]
     temporal_diffusion.sort(key=lambda row: row["temporal_complexity"], reverse=True)
     temporal_diffusion = temporal_diffusion[:args.diffusion_temporal]
@@ -391,12 +465,16 @@ def main() -> None:
             "identity_metadata": "URLs, emails, and handles excluded",
             "diffusiondb_nsfw_max": 0.1,
             "temporal_sampling": {
-                "definition": "rubric-derived cue score >= 3; not a teacher label",
+                "definition": (
+                    f"rubric-derived cue score >= {args.temporal_min_score}; "
+                    "not a teacher label"
+                ),
                 "rows": {
                     "VideoUFO": args.video_temporal,
                     "DiffusionDB": args.diffusion_temporal,
                 },
             },
+            "prior_corpus_exclusions": exclusion_manifests,
         },
     }
     args.manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")

@@ -79,11 +79,14 @@ def main() -> None:
         raise RuntimeError("--workers must be between 1 and 5")
     args.work_dir.mkdir(parents=True, exist_ok=True)
     candidates = itertools.product(
-        (10_000, 20_000), (64, 96), ((3, 5), (3, 6)),
-        (0.05, 0.1), (25, 40),
+        (100_000, 200_000),
+        (1, 8),
+        ((3, 5), (3, 6)),
+        (0.05, 0.1),
+        (1.0, 2.0),
     )
     report = []
-    for index, (bucket, dimension, ngrams, learning_rate, epochs) in enumerate(candidates):
+    for index, (bucket, dimension, ngrams, learning_rate, positive_weight_scale) in enumerate(candidates):
         def run_fold(fold: int) -> tuple[dict, int]:
             directory = args.folds_dir / f"fold-{fold}"
             artifact = args.work_dir / f"candidate-{index:02d}-fold-{fold}.bin"
@@ -96,7 +99,8 @@ def main() -> None:
                 "--output", str(artifact), "--bucket", str(bucket),
                 "--dimension", str(dimension), "--min-ngram", str(ngrams[0]),
                 "--max-ngram", str(ngrams[1]), "--learning-rate", str(learning_rate),
-                "--epochs", str(epochs),
+                "--epochs", "25", "--l2", "0.0001",
+                "--positive-weight-scale", str(positive_weight_scale),
                 "--source-manifest-sha256", args.source_manifest_sha256,
                 "--training-code-commit", args.training_code_commit,
             ]
@@ -111,20 +115,33 @@ def main() -> None:
         fold_metrics = [metric for metric, _ in fold_results]
         sizes = [size for _, size in fold_results]
         utilities = [metric["utility"] for metric in fold_metrics]
+        short_accepted = sum(metric["short_accepted"] for metric in fold_metrics)
+        short_correct = sum(metric["short_correct"] for metric in fold_metrics)
+        long_accepted = sum(metric["long_accepted"] for metric in fold_metrics)
+        long_correct = sum(metric["long_correct"] for metric in fold_metrics)
         candidate = {
             "bucket": bucket, "dimension": dimension, "min_ngram": ngrams[0],
-            "max_ngram": ngrams[1], "learning_rate": learning_rate, "epochs": epochs,
+            "max_ngram": ngrams[1], "learning_rate": learning_rate, "epochs": 25,
+            "l2": 0.0001, "positive_weight_scale": positive_weight_scale,
             "mean_utility": statistics.mean(utilities),
             "utility_variance": statistics.pvariance(utilities),
             "mean_short_precision": statistics.mean(metric["short_precision"] for metric in fold_metrics),
             "mean_long_precision": statistics.mean(metric["long_precision"] for metric in fold_metrics),
             "mean_coverage": statistics.mean(metric["coverage"] for metric in fold_metrics),
             "mean_artifact_bytes": statistics.mean(sizes),
+            "pooled_short_accepted": short_accepted,
+            "pooled_short_precision": short_correct / short_accepted if short_accepted else 0,
+            "pooled_long_accepted": long_accepted,
+            "pooled_long_precision": long_correct / long_accepted if long_accepted else 0,
             "folds": fold_metrics,
         }
         candidate["eligible"] = (
-            candidate["mean_short_precision"] >= 0.95
-            and candidate["mean_long_precision"] >= 0.98
+            candidate["pooled_short_precision"] >= 0.95
+            and candidate["pooled_long_precision"] >= 0.98
+            and candidate["pooled_short_accepted"] >= 60
+            and candidate["pooled_long_accepted"] >= 60
+            and min(metric["short_accepted"] for metric in fold_metrics) >= 10
+            and min(metric["long_accepted"] for metric in fold_metrics) >= 10
         )
         report.append(candidate)
         persist(args.output, report)
