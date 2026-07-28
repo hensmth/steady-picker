@@ -1,128 +1,173 @@
 # SteadyPicker
 
-SteadyPicker is a tiny, deterministic video-settings engine. It converts a
-generation prompt into quota-aware duration, aspect-ratio, and resolution
-settings without making a production network or LLM call.
+SteadyPicker is a local, deterministic video-settings engine. It chooses a
+quota-aware duration and parses aspect ratio and resolution without making a
+network or LLM call in production.
 
-The released CLI includes the trained `settings-v1` model, so one executable is
-all you need.
+The CLI embeds the model, attribution, and `quota-safe-v2` profile. A single
+executable is enough.
 
 ## Quick start
 
-Install with Go:
-
 ```bash
 go install github.com/hensmth/steady-picker/cmd/steady-picker@latest
-```
 
-Or download a ready-to-run binary from the
-[latest release](https://github.com/hensmth/steady-picker/releases/latest) for
-Linux, macOS, or Windows.
-
-Send one JSON object over stdin:
-
-```bash
 printf '%s\n' \
-  '{"prompt":"a flower transforming in a timelapse","mode":"text-to-video"}' |
-  steady-picker predict
+  '{"prompt":"a flower progresses from bud to full bloom","mode":"text-to-video"}' |
+  steady-picker predict --profile quota-safe-v2
 ```
 
-Output:
-
-```json
-{"duration":6,"aspect_ratio":"16:9","resolution":"480p","source":"model","confidence":0.9999,"model_version":"v1","policy_version":"balanced-v1"}
-```
-
-Prompts are read from stdin, not command-line arguments. Prediction is local,
-network-free, and normally completes in milliseconds.
-
-## Policy
-
-- Safe fallback: 4 seconds, 16:9, 480p.
-- Maximum duration: 6 seconds.
-- Default resolution: 480p.
-- `720p` requires `720p`, `HD output`, or `render in HD` in the prompt.
-- Decorative wording such as `4K style`, `cinematic`, or `high quality` stays
-  at 480p.
-- Image-to-video requests retain the source frame with `auto`.
-- Learned 2- or 6-second overrides require a singleton conformal set, at least
-  0.80 calibrated confidence, and a matching semantic cue.
-
-Ambiguous or out-of-distribution prompts keep the conservative fallback.
-
-## Input
-
-`predict` accepts:
+`predict` accepts newline-delimited JSON exclusively through stdin, so prompts
+do not appear in process arguments. It emits one result per input line:
 
 ```json
 {
-  "prompt": "a quick vertical video of a bird taking flight",
-  "mode": "text-to-video",
-  "image_aspect_ratio": 1.777
+  "duration": 4,
+  "aspect_ratio": "16:9",
+  "resolution": "480p",
+  "source": "fallback",
+  "duration_source": "fallback",
+  "aspect_ratio_source": "fallback",
+  "resolution_source": "fallback",
+  "confidence": 0,
+  "model_version": "settings-v2",
+  "policy_version": "quota-safe-v2",
+  "profile_version": "2",
+  "artifact_sha256": "...",
+  "reasons": ["duration.safe_fallback", "aspect.safe_fallback", "resolution.safe_fallback"],
+  "estimated_cost_microusd": 200000,
+  "pricing_as_of": "2026-07-28"
 }
 ```
 
-- `prompt` is required.
-- `mode` is `text-to-video` or `image-to-video`.
-- `image_aspect_ratio` is optional and only relevant to image-to-video.
-- Input is limited to one JSON line of at most 16 KiB.
+Ready-to-run Linux, macOS, and Windows binaries are attached to each release.
+Verify them with `SHA256SUMS` and GitHub artifact attestations before use.
 
-Use a custom model when needed:
+## Policy profiles
+
+Provider capabilities and application budgets are separate. A `Profile`
+defines allowed durations, semantic mappings, resolutions, aspect ratios,
+defaults, maximums, and optional per-second price estimates.
+
+The embedded `quota-safe-v2` profile:
+
+- maps learned `short`, `medium`, and `long` labels to 2, 4, and 6 seconds;
+- defaults to 4 seconds, 480p, and 16:9 for text-to-video;
+- permits an explicit 720p request;
+- preserves source aspect ratio for image-to-video by default; and
+- estimates 480p at 50,000 micro-USD/sec and 720p at 70,000 micro-USD/sec,
+  with a dated pricing field.
+
+Decision precedence is field-specific: valid explicit request, source-media
+constraint, accepted learned duration, then safe fallback. The model never
+controls aspect ratio or resolution.
+
+Use a custom governed profile:
 
 ```bash
-steady-picker predict --model ./custom-model.bin --model-version custom-v1
+steady-picker predict --profile-file ./profile.json < requests.jsonl
 ```
+
+## Input
+
+```json
+{
+  "prompt": "one quick wink in a portrait frame",
+  "mode": "text-to-video",
+  "duration": 2,
+  "aspect_ratio": "9:16",
+  "resolution": "480p"
+}
+```
+
+`mode` is `text-to-video` or `image-to-video`. Image requests may provide
+`source_media_aspect_ratio`; the v0.1 `image_aspect_ratio` number remains
+accepted for compatibility. Prompts must be valid UTF-8, non-empty, and no
+larger than 16 KiB.
+
+Technical prompt cues are negation- and conflict-aware. Unsupported durations
+round upward to the next profile duration and values above the maximum clamp.
+Conflicting affirmative cues use the safe fallback.
+
+## Operations
+
+```bash
+steady-picker health
+steady-picker inspect-model
+steady-picker licenses
+steady-picker predict --model ./custom-v3.bin < requests.jsonl
+```
+
+Artifact v3 is strict and provenance-carrying. Models over 64 MiB, malformed
+dimensions, non-finite values, unknown labels, or ambiguous v2 label order are
+rejected before inference. Use v0.1 for a legacy v2 artifact or retrain it.
 
 ## Go library
 
 ```go
-package main
-
-import (
-	"fmt"
-	"log"
-
-	steady "github.com/hensmth/steady-picker"
-)
-
-func main() {
-	model, err := steady.LoadDefault()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer model.Close()
-
-	result := steady.PickSettings(model, steady.PickRequest{
-		Prompt: "a quick wink in a portrait video",
-		Mode:   "text-to-video",
-	}, steady.DefaultModelVersion)
-	fmt.Printf("%+v\n", result)
+model, err := steady.LoadDefault()
+if err != nil {
+    log.Fatal(err)
 }
+result, err := steady.PickSettings(
+    model,
+    steady.QuotaSafeProfile(),
+    steady.PickRequest{
+        Prompt: "a person walks naturally across a room",
+        Mode: steady.TextToVideo,
+    },
+)
 ```
 
-`Load(path)` memory-maps an external model. `LoadBytes(data)` supports models
-embedded by another application.
+Public entry points are `Load`, `LoadBytes`, `LoadDefault`,
+`Model.Metadata`, `NewProfile`, `QuotaSafeProfile`, and `PickSettings`.
+Loaded models are immutable and safe for concurrent use; no `Close` call is
+needed. Returned classification slices are caller-owned.
 
-## Training
+## Reproducible training
 
-Training data uses one label per line:
-
-```text
-__label__d2 A quick shot of a bird taking flight
-__label__d4 A dancer turns toward the camera
-__label__d6 A timelapse showing a flower fully bloom
-```
+The governed v2 pipeline uses exactly 3,000 VideoUFO brief captions and 2,000
+DiffusionDB prompts. It excludes URLs, identities, technical settings, unsafe
+rows, duplicates, and near-duplicate clusters before teacher labelling.
 
 ```bash
-steady-picker train --input training.txt --output custom-model.bin
-steady-picker evaluate --model custom-model.bin --test held-out.txt
+python scripts/build_corpus.py \
+  --cache .cache --output corpus/settings-v2.jsonl \
+  --manifest corpus/source-manifest.json
+
+python scripts/label_with_hermes.py \
+  --input corpus/settings-v2.jsonl \
+  --output corpus/settings-v2-labelled.jsonl \
+  --manifest corpus/teacher-manifest.json \
+  --checkpoint-dir .checkpoints \
+  --provider openai-codex --teacher-model gpt-5.6-sol
+
+python scripts/build_splits.py \
+  --input corpus/settings-v2-labelled.jsonl \
+  --output-dir corpus/splits --manifest corpus/split-manifest.json
 ```
 
-Training is seeded and single-worker by default, so identical inputs and
-parameters produce identical model checksums. The scripts directory contains
-optional public-prompt acquisition, Hermes teacher labelling, deterministic
-splitting, and cross-validation helpers. Teacher labelling runs locally by
-default and accepts `--ssh-host` for a remote Hermes installation.
+Teacher labelling is local by default and supports optional generic SSH
+execution. It runs two blind shuffled passes with permuted label presentation
+and a third disagreement pass. Checkpoints are validated before resume.
+
+Training requires four already-frozen splits:
+
+```bash
+steady-picker train \
+  --train corpus/splits/train.txt \
+  --probability-calibration corpus/splits/probability_calibration.txt \
+  --conformal-calibration corpus/splits/conformal_calibration.txt \
+  --threshold-development corpus/splits/policy_development.txt \
+  --source-manifest-sha256 SHA256 \
+  --training-code-commit GIT_SHA \
+  --output models/settings-v2.bin
+```
+
+The locked test, FETV evaluation, and independent AI-adjudicated audit are
+opened only after temperature, conformal quantiles, and policy thresholds are
+frozen. See [MODEL_CARD.md](MODEL_CARD.md), the corpus dataset card, and
+[the full methodology](docs/METHODOLOGY.md).
 
 ## Development
 
@@ -130,23 +175,16 @@ default and accepts `--ssh-host` for a remote Hermes installation.
 go test ./...
 go test -race ./...
 go vet ./...
+govulncheck ./...
+go test -run '^$' -bench BenchmarkPickSettingsFallback -benchmem
 ```
 
-Released binaries are built for:
+CI also runs CodeQL and dependency review on Linux, macOS, and Windows. Release
+automation creates a draft only after the checked-in release marker proves all
+locked gates passed.
 
-- Linux: amd64 and arm64
-- macOS: amd64 and arm64
-- Windows: amd64
+## License
 
-See [MODEL_CARD.md](MODEL_CARD.md) for model provenance, evaluation, intended
-use, and limitations.
-
-## Origin and license
-
-The classifier is derived from
-[`xDarkicex/steady`](https://github.com/xDarkicex/steady) and retains its MIT
-license. SteadyPicker adds independent calibration data, complete one-vs-all
-updates, corrected averaged-embedding gradients, deterministic training,
-strict artifact validation, and the quota policy.
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.
+Source code is MIT. The published v2 corpus and model are CC-BY-4.0.
+VideoUFO attribution and DiffusionDB/FETV notices are embedded and available
+through `steady-picker licenses`. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

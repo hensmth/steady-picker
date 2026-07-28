@@ -2,41 +2,46 @@ package steady
 
 import "math"
 
-// sigmoid returns 1 / (1 + exp(-x)).
-func sigmoid(x float32) float32 {
-	return 1.0 / (1.0 + float32(math.Exp(float64(-x))))
-}
-
-// decisionScore converts a sigmoid probability back to its unbounded linear
-// score. Platt scaling must be fit on decision scores, not on probabilities.
-func decisionScore(probability float32) float32 {
-	const epsilon = float32(1e-6)
-	p := max(epsilon, minFloat32(1-epsilon, probability))
-	return float32(math.Log(float64(p / (1 - p))))
-}
-
-// dot computes the dot product of two equal-length float32 slices.
-func dot(a, b []float32) float32 {
-	var s float32
-	for i := range a {
-		s += a[i] * b[i]
+func predictLogits(hidden, weights, bias, out []float32, dim int) {
+	for label := range bias {
+		sum := bias[label]
+		offset := label * dim
+		for d := 0; d < dim; d++ {
+			sum += hidden[d] * weights[offset+d]
+		}
+		out[label] = sum
 	}
-	return s
 }
 
-func minFloat32(a, b float32) float32 {
-	if a < b {
-		return a
+func softmax(logits, out []float32, temperature float32) {
+	if len(logits) == 0 {
+		return
 	}
-	return b
-}
-
-// PredictLogits writes OVA logistic probabilities for each label into out.
-// hidden is the embedding vector (length dim). weights is numLabels × dim
-// row-major, bias is numLabels floats. out must have length >= numLabels.
-func PredictLogits(hidden, weights, bias, out []float32) {
+	if temperature <= 0 || math.IsNaN(float64(temperature)) || math.IsInf(float64(temperature), 0) {
+		temperature = 1
+	}
+	maxValue := float64(logits[0] / temperature)
+	for _, value := range logits[1:] {
+		scaled := float64(value / temperature)
+		if scaled > maxValue {
+			maxValue = scaled
+		}
+	}
+	total := 0.0
+	for i, value := range logits {
+		probability := math.Exp(float64(value/temperature) - maxValue)
+		out[i] = float32(probability)
+		total += probability
+	}
+	if total == 0 || math.IsNaN(total) || math.IsInf(total, 0) {
+		uniform := float32(1 / float64(len(out)))
+		for i := range out {
+			out[i] = uniform
+		}
+		return
+	}
+	inverse := float32(1 / total)
 	for i := range out {
-		row := weights[i*len(hidden) : (i+1)*len(hidden)]
-		out[i] = sigmoid(dot(hidden, row) + bias[i])
+		out[i] *= inverse
 	}
 }

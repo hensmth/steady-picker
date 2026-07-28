@@ -14,9 +14,10 @@
 - Every exported function must have a Go doc comment starting with the name
 - Cyclomatic complexity must not exceed 10 per function
 - Keep prompts on stdin; do not add prompts to command-line arguments or logs.
-- Keep corpora, teacher output, credentials, generated media, and experimental
-  models out of Git. Changes to the committed default model require an updated
-  model card, checksum test, and validation evidence.
+- Keep credentials, private prompts, generated media, checkpoints, caches, and
+  experimental models out of Git. The governed sanitized corpus, label votes,
+  split membership, default model, manifests, and evaluation report are public
+  release inputs and require matching cards, digests, and validation evidence.
 - Add tests for new policy or model-format behavior.
 
 ## Code Style
@@ -27,4 +28,5 @@
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+Source contributions are MIT. Contributions to the published v2 corpus or
+trained model are CC-BY-4.0.

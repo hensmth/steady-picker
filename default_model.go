@@ -3,13 +3,12 @@ package steady
 import _ "embed"
 
 // DefaultModelVersion identifies the model embedded in released binaries.
-const DefaultModelVersion = "v1"
+const DefaultModelVersion = "settings-v2"
 
-//go:embed models/settings-v1.bin
+//go:embed models/settings-v2.bin
 var defaultModelArtifact []byte
 
-// LoadDefault loads the trained settings model embedded in this package.
-// The caller must call Close to release its resources.
+// LoadDefault loads the immutable trained settings model embedded in this package.
 func LoadDefault() (*Model, error) {
 	return LoadBytes(defaultModelArtifact)
 }
