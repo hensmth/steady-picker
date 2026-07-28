@@ -229,6 +229,15 @@ def weighted_kappa(first: list[str], second: list[str]) -> float:
     return 1 - observed / expected if expected else 1.0
 
 
+def usage_count(row: dict, key: str) -> int:
+    value = row.get(key)
+    if value is None:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        raise RuntimeError(f"invalid Hermes usage field {key}: {value!r}")
+    return int(value)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True)
@@ -427,10 +436,12 @@ def main() -> None:
         "wall_clock_budget_seconds": args.deadline_seconds,
         "usage": {
             "files": len(usage_rows),
-            "api_calls": sum(int(row.get("api_calls", 0)) for row in usage_rows),
-            "input_tokens": sum(int(row.get("input_tokens", 0)) for row in usage_rows),
-            "output_tokens": sum(int(row.get("output_tokens", 0)) for row in usage_rows),
-            "reasoning_tokens": sum(int(row.get("reasoning_tokens", 0)) for row in usage_rows),
+            "api_calls": sum(usage_count(row, "api_calls") for row in usage_rows),
+            "input_tokens": sum(usage_count(row, "input_tokens") for row in usage_rows),
+            "output_tokens": sum(usage_count(row, "output_tokens") for row in usage_rows),
+            "reasoning_tokens": sum(
+                usage_count(row, "reasoning_tokens") for row in usage_rows
+            ),
         },
     }
     if not args.sealed_output:
