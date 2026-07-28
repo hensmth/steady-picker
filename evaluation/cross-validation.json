@@ -1,0 +1,2151 @@
+{
+  "candidates": [
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 119,
+          "short_correct": 113,
+          "short_precision": 0.9495798319327731,
+          "utility": 0.14833333333333334
+        },
+        {
+          "coverage": 0.225,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 135,
+          "short_correct": 129,
+          "short_precision": 0.9555555555555556,
+          "utility": 0.175
+        },
+        {
+          "coverage": 0.16333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 98,
+          "short_correct": 96,
+          "short_precision": 0.9795918367346939,
+          "utility": 0.14666666666666667
+        },
+        {
+          "coverage": 0.225,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 135,
+          "short_correct": 129,
+          "short_precision": 0.9555555555555556,
+          "utility": 0.175
+        },
+        {
+          "coverage": 0.23666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 142,
+          "short_correct": 135,
+          "short_precision": 0.9507042253521126,
+          "utility": 0.17833333333333334
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.20966666666666667,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9581974010261382,
+      "mean_utility": 0.16466666666666666,
+      "min_ngram": 3,
+      "utility_variance": 0.0001982222222222221
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.21666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 130,
+          "short_correct": 124,
+          "short_precision": 0.9538461538461539,
+          "utility": 0.16666666666666666
+        },
+        {
+          "coverage": 0.21833333333333332,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 131,
+          "short_correct": 128,
+          "short_precision": 0.9770992366412213,
+          "utility": 0.19333333333333333
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 136,
+          "short_precision": 0.9855072463768116,
+          "utility": 0.21333333333333335
+        },
+        {
+          "coverage": 0.21166666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 127,
+          "short_correct": 121,
+          "short_precision": 0.952755905511811,
+          "utility": 0.16166666666666665
+        },
+        {
+          "coverage": 0.24333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 146,
+          "short_correct": 142,
+          "short_precision": 0.9726027397260274,
+          "utility": 0.21
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.224,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9683622564204051,
+      "mean_utility": 0.189,
+      "min_ngram": 3,
+      "utility_variance": 0.0004595555555555558
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.23333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 140,
+          "short_correct": 134,
+          "short_precision": 0.9571428571428572,
+          "utility": 0.18333333333333332
+        },
+        {
+          "coverage": 0.22666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 136,
+          "short_correct": 133,
+          "short_precision": 0.9779411764705882,
+          "utility": 0.20166666666666666
+        },
+        {
+          "coverage": 0.22833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 137,
+          "short_correct": 133,
+          "short_precision": 0.9708029197080292,
+          "utility": 0.195
+        },
+        {
+          "coverage": 0.17833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 107,
+          "short_correct": 105,
+          "short_precision": 0.9813084112149533,
+          "utility": 0.16166666666666665
+        },
+        {
+          "coverage": 0.21666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 130,
+          "short_correct": 128,
+          "short_precision": 0.9846153846153847,
+          "utility": 0.2
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.21666666666666667,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9743621498303625,
+      "mean_utility": 0.18833333333333332,
+      "min_ngram": 3,
+      "utility_variance": 0.0002188888888888891
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.11,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 66,
+          "short_correct": 64,
+          "short_precision": 0.9696969696969697,
+          "utility": 0.09333333333333334
+        },
+        {
+          "coverage": 0.25166666666666665,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 151,
+          "short_correct": 147,
+          "short_precision": 0.9735099337748344,
+          "utility": 0.21833333333333332
+        },
+        {
+          "coverage": 0.19833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 119,
+          "short_correct": 116,
+          "short_precision": 0.9747899159663865,
+          "utility": 0.17333333333333334
+        },
+        {
+          "coverage": 0.21666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 130,
+          "short_correct": 125,
+          "short_precision": 0.9615384615384616,
+          "utility": 0.175
+        },
+        {
+          "coverage": 0.22,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 132,
+          "short_correct": 130,
+          "short_precision": 0.9848484848484849,
+          "utility": 0.20333333333333334
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.19933333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9728767531650274,
+      "mean_utility": 0.17266666666666666,
+      "min_ngram": 3,
+      "utility_variance": 0.001865111111111111
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.20833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 125,
+          "short_correct": 118,
+          "short_precision": 0.944,
+          "utility": 0.15
+        },
+        {
+          "coverage": 0.17166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 103,
+          "short_correct": 100,
+          "short_precision": 0.970873786407767,
+          "utility": 0.14666666666666667
+        },
+        {
+          "coverage": 0.12,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 72,
+          "short_correct": 72,
+          "short_precision": 1.0,
+          "utility": 0.12
+        },
+        {
+          "coverage": 0.23833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 143,
+          "short_correct": 136,
+          "short_precision": 0.951048951048951,
+          "utility": 0.18
+        },
+        {
+          "coverage": 0.20833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 125,
+          "short_correct": 121,
+          "short_precision": 0.968,
+          "utility": 0.175
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.18933333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9667845474913436,
+      "mean_utility": 0.15433333333333332,
+      "min_ngram": 3,
+      "utility_variance": 0.00046844444444444434
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.19833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 119,
+          "short_correct": 115,
+          "short_precision": 0.9663865546218487,
+          "utility": 0.165
+        },
+        {
+          "coverage": 0.26,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 156,
+          "short_correct": 152,
+          "short_precision": 0.9743589743589743,
+          "utility": 0.22666666666666666
+        },
+        {
+          "coverage": 0.22166666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 133,
+          "short_correct": 130,
+          "short_precision": 0.9774436090225563,
+          "utility": 0.19666666666666666
+        },
+        {
+          "coverage": 0.22,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 132,
+          "short_correct": 126,
+          "short_precision": 0.9545454545454546,
+          "utility": 0.17
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 133,
+          "short_precision": 0.9637681159420289,
+          "utility": 0.18833333333333332
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.226,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9673005416981726,
+      "mean_utility": 0.18933333333333333,
+      "min_ngram": 3,
+      "utility_variance": 0.0004828888888888885
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 118,
+          "short_correct": 114,
+          "short_precision": 0.9661016949152542,
+          "utility": 0.16333333333333333
+        },
+        {
+          "coverage": 0.2733333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 164,
+          "short_correct": 161,
+          "short_precision": 0.9817073170731707,
+          "utility": 0.24833333333333332
+        },
+        {
+          "coverage": 0.25,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 150,
+          "short_correct": 146,
+          "short_precision": 0.9733333333333334,
+          "utility": 0.21666666666666667
+        },
+        {
+          "coverage": 0.2,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 120,
+          "short_correct": 117,
+          "short_precision": 0.975,
+          "utility": 0.175
+        },
+        {
+          "coverage": 0.235,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 141,
+          "short_correct": 136,
+          "short_precision": 0.9645390070921985,
+          "utility": 0.19333333333333333
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.23099999999999998,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9721362704827914,
+      "mean_utility": 0.19933333333333333,
+      "min_ngram": 3,
+      "utility_variance": 0.000925111111111111
+    },
+    {
+      "bucket": 10000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.11,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 66,
+          "short_correct": 64,
+          "short_precision": 0.9696969696969697,
+          "utility": 0.09333333333333334
+        },
+        {
+          "coverage": 0.2916666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 175,
+          "short_correct": 171,
+          "short_precision": 0.9771428571428571,
+          "utility": 0.25833333333333336
+        },
+        {
+          "coverage": 0.2733333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 164,
+          "short_correct": 158,
+          "short_precision": 0.9634146341463414,
+          "utility": 0.22333333333333333
+        },
+        {
+          "coverage": 0.20333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 122,
+          "short_correct": 120,
+          "short_precision": 0.9836065573770492,
+          "utility": 0.18666666666666668
+        },
+        {
+          "coverage": 0.23333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 140,
+          "short_correct": 136,
+          "short_precision": 0.9714285714285714,
+          "utility": 0.2
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 2561309,
+      "mean_coverage": 0.22233333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9730579179583577,
+      "mean_utility": 0.19233333333333336,
+      "min_ngram": 3,
+      "utility_variance": 0.0030417777777777782
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 118,
+          "short_correct": 113,
+          "short_precision": 0.9576271186440678,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.23166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 139,
+          "short_correct": 134,
+          "short_precision": 0.9640287769784173,
+          "utility": 0.19
+        },
+        {
+          "coverage": 0.16333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 98,
+          "short_correct": 96,
+          "short_precision": 0.9795918367346939,
+          "utility": 0.14666666666666667
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 128,
+          "short_precision": 0.9552238805970149,
+          "utility": 0.17333333333333334
+        },
+        {
+          "coverage": 0.23166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 139,
+          "short_correct": 132,
+          "short_precision": 0.9496402877697842,
+          "utility": 0.17333333333333334
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.20933333333333332,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9612223801447956,
+      "mean_utility": 0.16766666666666666,
+      "min_ngram": 3,
+      "utility_variance": 0.00023288888888888892
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.21333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 128,
+          "short_correct": 122,
+          "short_precision": 0.953125,
+          "utility": 0.16333333333333333
+        },
+        {
+          "coverage": 0.21833333333333332,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 131,
+          "short_correct": 128,
+          "short_precision": 0.9770992366412213,
+          "utility": 0.19333333333333333
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 136,
+          "short_precision": 0.9855072463768116,
+          "utility": 0.21333333333333335
+        },
+        {
+          "coverage": 0.21166666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 127,
+          "short_correct": 121,
+          "short_precision": 0.952755905511811,
+          "utility": 0.16166666666666665
+        },
+        {
+          "coverage": 0.235,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 141,
+          "short_correct": 138,
+          "short_precision": 0.9787234042553191,
+          "utility": 0.21
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.22166666666666668,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9694421585570326,
+      "mean_utility": 0.18833333333333332,
+      "min_ngram": 3,
+      "utility_variance": 0.0004911111111111113
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.22833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 137,
+          "short_correct": 131,
+          "short_precision": 0.9562043795620438,
+          "utility": 0.17833333333333334
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 135,
+          "short_precision": 0.9782608695652174,
+          "utility": 0.205
+        },
+        {
+          "coverage": 0.22666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 136,
+          "short_correct": 132,
+          "short_precision": 0.9705882352941176,
+          "utility": 0.19333333333333333
+        },
+        {
+          "coverage": 0.18,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 108,
+          "short_correct": 105,
+          "short_precision": 0.9722222222222222,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.22,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 132,
+          "short_correct": 130,
+          "short_precision": 0.9848484848484849,
+          "utility": 0.20333333333333334
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.217,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9724248382984172,
+      "mean_utility": 0.187,
+      "min_ngram": 3,
+      "utility_variance": 0.0003459999999999999
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.10333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 62,
+          "short_correct": 60,
+          "short_precision": 0.967741935483871,
+          "utility": 0.08666666666666667
+        },
+        {
+          "coverage": 0.24166666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 145,
+          "short_correct": 143,
+          "short_precision": 0.9862068965517241,
+          "utility": 0.225
+        },
+        {
+          "coverage": 0.19333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 116,
+          "short_correct": 113,
+          "short_precision": 0.9741379310344828,
+          "utility": 0.16833333333333333
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 129,
+          "short_precision": 0.9626865671641791,
+          "utility": 0.18166666666666667
+        },
+        {
+          "coverage": 0.24,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 144,
+          "short_correct": 142,
+          "short_precision": 0.9861111111111112,
+          "utility": 0.22333333333333333
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.20033333333333334,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9753768882690736,
+      "mean_utility": 0.177,
+      "min_ngram": 3,
+      "utility_variance": 0.0025415555555555556
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.21166666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 127,
+          "short_correct": 120,
+          "short_precision": 0.9448818897637795,
+          "utility": 0.15333333333333332
+        },
+        {
+          "coverage": 0.175,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 105,
+          "short_correct": 102,
+          "short_precision": 0.9714285714285714,
+          "utility": 0.15
+        },
+        {
+          "coverage": 0.12,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 72,
+          "short_correct": 72,
+          "short_precision": 1.0,
+          "utility": 0.12
+        },
+        {
+          "coverage": 0.235,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 141,
+          "short_correct": 135,
+          "short_precision": 0.9574468085106383,
+          "utility": 0.185
+        },
+        {
+          "coverage": 0.21166666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 127,
+          "short_correct": 123,
+          "short_precision": 0.968503937007874,
+          "utility": 0.17833333333333334
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.19066666666666665,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9684522413421727,
+      "mean_utility": 0.15733333333333333,
+      "min_ngram": 3,
+      "utility_variance": 0.0005340000000000002
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.19166666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 115,
+          "short_correct": 111,
+          "short_precision": 0.9652173913043478,
+          "utility": 0.15833333333333333
+        },
+        {
+          "coverage": 0.26166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 157,
+          "short_correct": 153,
+          "short_precision": 0.9745222929936306,
+          "utility": 0.22833333333333333
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 131,
+          "short_precision": 0.9776119402985075,
+          "utility": 0.19833333333333333
+        },
+        {
+          "coverage": 0.22,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 132,
+          "short_correct": 126,
+          "short_precision": 0.9545454545454546,
+          "utility": 0.17
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 133,
+          "short_precision": 0.9637681159420289,
+          "utility": 0.18833333333333332
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.22533333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9671330390167939,
+      "mean_utility": 0.18866666666666668,
+      "min_ngram": 3,
+      "utility_variance": 0.0005871111111111111
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 116,
+          "short_correct": 112,
+          "short_precision": 0.9655172413793104,
+          "utility": 0.16
+        },
+        {
+          "coverage": 0.2733333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 164,
+          "short_correct": 161,
+          "short_precision": 0.9817073170731707,
+          "utility": 0.24833333333333332
+        },
+        {
+          "coverage": 0.25166666666666665,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 151,
+          "short_correct": 147,
+          "short_precision": 0.9735099337748344,
+          "utility": 0.21833333333333332
+        },
+        {
+          "coverage": 0.19833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 119,
+          "short_correct": 116,
+          "short_precision": 0.9747899159663865,
+          "utility": 0.17333333333333334
+        },
+        {
+          "coverage": 0.235,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 141,
+          "short_correct": 136,
+          "short_precision": 0.9645390070921985,
+          "utility": 0.19333333333333333
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.23033333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9720126830571801,
+      "mean_utility": 0.19866666666666666,
+      "min_ngram": 3,
+      "utility_variance": 0.0010037777777777773
+    },
+    {
+      "bucket": 10000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.11,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 66,
+          "short_correct": 64,
+          "short_precision": 0.9696969696969697,
+          "utility": 0.09333333333333334
+        },
+        {
+          "coverage": 0.2966666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 178,
+          "short_correct": 173,
+          "short_precision": 0.9719101123595506,
+          "utility": 0.255
+        },
+        {
+          "coverage": 0.2733333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 164,
+          "short_correct": 158,
+          "short_precision": 0.9634146341463414,
+          "utility": 0.22333333333333333
+        },
+        {
+          "coverage": 0.20833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 125,
+          "short_correct": 122,
+          "short_precision": 0.976,
+          "utility": 0.18333333333333332
+        },
+        {
+          "coverage": 0.23333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 140,
+          "short_correct": 136,
+          "short_precision": 0.9714285714285714,
+          "utility": 0.2
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 3841693,
+      "mean_coverage": 0.22433333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9704900575262866,
+      "mean_utility": 0.191,
+      "min_ngram": 3,
+      "utility_variance": 0.002964
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 114,
+          "short_correct": 109,
+          "short_precision": 0.956140350877193,
+          "utility": 0.14833333333333334
+        },
+        {
+          "coverage": 0.19833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 119,
+          "short_correct": 113,
+          "short_precision": 0.9495798319327731,
+          "utility": 0.14833333333333334
+        },
+        {
+          "coverage": 0.16333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 98,
+          "short_correct": 96,
+          "short_precision": 0.9795918367346939,
+          "utility": 0.14666666666666667
+        },
+        {
+          "coverage": 0.23166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 139,
+          "short_correct": 133,
+          "short_precision": 0.9568345323741008,
+          "utility": 0.18166666666666667
+        },
+        {
+          "coverage": 0.22166666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 133,
+          "short_correct": 126,
+          "short_precision": 0.9473684210526315,
+          "utility": 0.16333333333333333
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.201,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9579029945942784,
+      "mean_utility": 0.15766666666666668,
+      "min_ngram": 3,
+      "utility_variance": 0.0001806666666666666
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.195,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 117,
+          "short_correct": 112,
+          "short_precision": 0.9572649572649573,
+          "utility": 0.15333333333333332
+        },
+        {
+          "coverage": 0.185,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 111,
+          "short_correct": 110,
+          "short_precision": 0.990990990990991,
+          "utility": 0.17666666666666667
+        },
+        {
+          "coverage": 0.22666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 136,
+          "short_correct": 133,
+          "short_precision": 0.9779411764705882,
+          "utility": 0.20166666666666666
+        },
+        {
+          "coverage": 0.21333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 128,
+          "short_correct": 121,
+          "short_precision": 0.9453125,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.20666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 124,
+          "short_correct": 121,
+          "short_precision": 0.9758064516129032,
+          "utility": 0.18166666666666667
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.20533333333333334,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9694632152678879,
+      "mean_utility": 0.17366666666666666,
+      "min_ngram": 3,
+      "utility_variance": 0.0003237777777777778
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.205,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 123,
+          "short_correct": 118,
+          "short_precision": 0.959349593495935,
+          "utility": 0.16333333333333333
+        },
+        {
+          "coverage": 0.185,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 111,
+          "short_correct": 110,
+          "short_precision": 0.990990990990991,
+          "utility": 0.17666666666666667
+        },
+        {
+          "coverage": 0.24333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 146,
+          "short_correct": 141,
+          "short_precision": 0.9657534246575342,
+          "utility": 0.20166666666666666
+        },
+        {
+          "coverage": 0.18833333333333332,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 113,
+          "short_correct": 109,
+          "short_precision": 0.9646017699115044,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.225,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 135,
+          "short_correct": 132,
+          "short_precision": 0.9777777777777777,
+          "utility": 0.2
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.20933333333333334,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9716947113667485,
+      "mean_utility": 0.17933333333333334,
+      "min_ngram": 3,
+      "utility_variance": 0.0003562222222222223
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.14833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 89,
+          "short_correct": 87,
+          "short_precision": 0.9775280898876404,
+          "utility": 0.13166666666666665
+        },
+        {
+          "coverage": 0.25666666666666665,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 154,
+          "short_correct": 151,
+          "short_precision": 0.9805194805194806,
+          "utility": 0.23166666666666666
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 131,
+          "short_precision": 0.9776119402985075,
+          "utility": 0.19833333333333333
+        },
+        {
+          "coverage": 0.20666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 124,
+          "short_correct": 119,
+          "short_precision": 0.9596774193548387,
+          "utility": 0.165
+        },
+        {
+          "coverage": 0.24166666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 145,
+          "short_correct": 141,
+          "short_precision": 0.9724137931034482,
+          "utility": 0.20833333333333334
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.21533333333333332,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9735501446327831,
+      "mean_utility": 0.187,
+      "min_ngram": 3,
+      "utility_variance": 0.001224888888888889
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19166666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 115,
+          "short_correct": 110,
+          "short_precision": 0.9565217391304348,
+          "utility": 0.15
+        },
+        {
+          "coverage": 0.175,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 105,
+          "short_correct": 102,
+          "short_precision": 0.9714285714285714,
+          "utility": 0.15
+        },
+        {
+          "coverage": 0.11833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 71,
+          "short_correct": 71,
+          "short_precision": 1.0,
+          "utility": 0.11833333333333333
+        },
+        {
+          "coverage": 0.23833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 143,
+          "short_correct": 134,
+          "short_precision": 0.9370629370629371,
+          "utility": 0.16333333333333333
+        },
+        {
+          "coverage": 0.21,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 126,
+          "short_correct": 121,
+          "short_precision": 0.9603174603174603,
+          "utility": 0.16833333333333333
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.18666666666666668,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9650661415878807,
+      "mean_utility": 0.15,
+      "min_ngram": 3,
+      "utility_variance": 0.00030333333333333335
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.21,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 126,
+          "short_correct": 121,
+          "short_precision": 0.9603174603174603,
+          "utility": 0.16833333333333333
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 135,
+          "short_precision": 0.9782608695652174,
+          "utility": 0.205
+        },
+        {
+          "coverage": 0.21666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 130,
+          "short_correct": 128,
+          "short_precision": 0.9846153846153847,
+          "utility": 0.2
+        },
+        {
+          "coverage": 0.19666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 118,
+          "short_correct": 113,
+          "short_precision": 0.9576271186440678,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.23833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 143,
+          "short_correct": 138,
+          "short_precision": 0.965034965034965,
+          "utility": 0.19666666666666666
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.21833333333333332,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.969171159635419,
+      "mean_utility": 0.185,
+      "min_ngram": 3,
+      "utility_variance": 0.0003877777777777777
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.21,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 126,
+          "short_correct": 122,
+          "short_precision": 0.9682539682539683,
+          "utility": 0.17666666666666667
+        },
+        {
+          "coverage": 0.245,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 147,
+          "short_correct": 144,
+          "short_precision": 0.9795918367346939,
+          "utility": 0.22
+        },
+        {
+          "coverage": 0.24,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 144,
+          "short_correct": 140,
+          "short_precision": 0.9722222222222222,
+          "utility": 0.20666666666666667
+        },
+        {
+          "coverage": 0.18666666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 112,
+          "short_correct": 110,
+          "short_precision": 0.9821428571428571,
+          "utility": 0.17
+        },
+        {
+          "coverage": 0.24666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 148,
+          "short_correct": 143,
+          "short_precision": 0.9662162162162162,
+          "utility": 0.205
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.22566666666666665,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9736854201139915,
+      "mean_utility": 0.19566666666666666,
+      "min_ngram": 3,
+      "utility_variance": 0.00036399999999999985
+    },
+    {
+      "bucket": 20000,
+      "dimension": 64,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.17833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 107,
+          "short_correct": 104,
+          "short_precision": 0.9719626168224299,
+          "utility": 0.15333333333333332
+        },
+        {
+          "coverage": 0.275,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 165,
+          "short_correct": 161,
+          "short_precision": 0.9757575757575757,
+          "utility": 0.24166666666666667
+        },
+        {
+          "coverage": 0.24333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 146,
+          "short_correct": 141,
+          "short_precision": 0.9657534246575342,
+          "utility": 0.20166666666666666
+        },
+        {
+          "coverage": 0.17333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 104,
+          "short_correct": 101,
+          "short_precision": 0.9711538461538461,
+          "utility": 0.14833333333333334
+        },
+        {
+          "coverage": 0.21333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 128,
+          "short_correct": 124,
+          "short_precision": 0.96875,
+          "utility": 0.18
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 5121309,
+      "mean_coverage": 0.21666666666666667,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9706754926782772,
+      "mean_utility": 0.185,
+      "min_ngram": 3,
+      "utility_variance": 0.0011722222222222223
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.19333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 116,
+          "short_correct": 111,
+          "short_precision": 0.9568965517241379,
+          "utility": 0.15166666666666667
+        },
+        {
+          "coverage": 0.19833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 119,
+          "short_correct": 114,
+          "short_precision": 0.957983193277311,
+          "utility": 0.15666666666666668
+        },
+        {
+          "coverage": 0.16333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 98,
+          "short_correct": 96,
+          "short_precision": 0.9795918367346939,
+          "utility": 0.14666666666666667
+        },
+        {
+          "coverage": 0.23166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 139,
+          "short_correct": 133,
+          "short_precision": 0.9568345323741008,
+          "utility": 0.18166666666666667
+        },
+        {
+          "coverage": 0.22666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 136,
+          "short_correct": 129,
+          "short_precision": 0.9485294117647058,
+          "utility": 0.16833333333333333
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.20266666666666666,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9599671051749898,
+      "mean_utility": 0.161,
+      "min_ngram": 3,
+      "utility_variance": 0.00015844444444444445
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.19666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 118,
+          "short_correct": 113,
+          "short_precision": 0.9576271186440678,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.185,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 111,
+          "short_correct": 110,
+          "short_precision": 0.990990990990991,
+          "utility": 0.17666666666666667
+        },
+        {
+          "coverage": 0.22666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 136,
+          "short_correct": 133,
+          "short_precision": 0.9779411764705882,
+          "utility": 0.20166666666666666
+        },
+        {
+          "coverage": 0.215,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 129,
+          "short_correct": 122,
+          "short_precision": 0.9457364341085271,
+          "utility": 0.15666666666666668
+        },
+        {
+          "coverage": 0.21,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 126,
+          "short_correct": 123,
+          "short_precision": 0.9761904761904762,
+          "utility": 0.185
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.20666666666666667,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9696972392809301,
+      "mean_utility": 0.175,
+      "min_ngram": 3,
+      "utility_variance": 0.00030999999999999984
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.205,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 123,
+          "short_correct": 118,
+          "short_precision": 0.959349593495935,
+          "utility": 0.16333333333333333
+        },
+        {
+          "coverage": 0.18666666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 112,
+          "short_correct": 111,
+          "short_precision": 0.9910714285714286,
+          "utility": 0.17833333333333334
+        },
+        {
+          "coverage": 0.24333333333333335,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 146,
+          "short_correct": 141,
+          "short_precision": 0.9657534246575342,
+          "utility": 0.20166666666666666
+        },
+        {
+          "coverage": 0.19333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 116,
+          "short_correct": 112,
+          "short_precision": 0.9655172413793104,
+          "utility": 0.16
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 131,
+          "short_precision": 0.9776119402985075,
+          "utility": 0.19833333333333333
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.21033333333333334,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9718607256805432,
+      "mean_utility": 0.18033333333333335,
+      "min_ngram": 3,
+      "utility_variance": 0.00029711111111111106
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.14,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 84,
+          "short_correct": 82,
+          "short_precision": 0.9761904761904762,
+          "utility": 0.12333333333333334
+        },
+        {
+          "coverage": 0.23333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 140,
+          "short_correct": 138,
+          "short_precision": 0.9857142857142858,
+          "utility": 0.21666666666666667
+        },
+        {
+          "coverage": 0.21666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 130,
+          "short_correct": 127,
+          "short_precision": 0.9769230769230769,
+          "utility": 0.19166666666666668
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 129,
+          "short_precision": 0.9626865671641791,
+          "utility": 0.18166666666666667
+        },
+        {
+          "coverage": 0.26,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 156,
+          "short_correct": 152,
+          "short_precision": 0.9743589743589743,
+          "utility": 0.22666666666666666
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 5,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.21466666666666667,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9751746760701985,
+      "mean_utility": 0.188,
+      "min_ngram": 3,
+      "utility_variance": 0.0013104444444444442
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.20833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 125,
+          "short_correct": 118,
+          "short_precision": 0.944,
+          "utility": 0.15
+        },
+        {
+          "coverage": 0.17166666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 103,
+          "short_correct": 100,
+          "short_precision": 0.970873786407767,
+          "utility": 0.14666666666666667
+        },
+        {
+          "coverage": 0.11833333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 71,
+          "short_correct": 71,
+          "short_precision": 1.0,
+          "utility": 0.11833333333333333
+        },
+        {
+          "coverage": 0.23333333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 140,
+          "short_correct": 133,
+          "short_precision": 0.95,
+          "utility": 0.175
+        },
+        {
+          "coverage": 0.205,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 123,
+          "short_correct": 119,
+          "short_precision": 0.967479674796748,
+          "utility": 0.17166666666666666
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.18733333333333332,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.966470692240903,
+      "mean_utility": 0.15233333333333332,
+      "min_ngram": 3,
+      "utility_variance": 0.0004162222222222221
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.20833333333333334,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 125,
+          "short_correct": 120,
+          "short_precision": 0.96,
+          "utility": 0.16666666666666666
+        },
+        {
+          "coverage": 0.23,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 138,
+          "short_correct": 135,
+          "short_precision": 0.9782608695652174,
+          "utility": 0.205
+        },
+        {
+          "coverage": 0.21666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 130,
+          "short_correct": 128,
+          "short_precision": 0.9846153846153847,
+          "utility": 0.2
+        },
+        {
+          "coverage": 0.19666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 118,
+          "short_correct": 113,
+          "short_precision": 0.9576271186440678,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.23666666666666666,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 142,
+          "short_correct": 137,
+          "short_precision": 0.9647887323943662,
+          "utility": 0.195
+        }
+      ],
+      "learning_rate": 0.05,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.21766666666666667,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9690584210438072,
+      "mean_utility": 0.18433333333333332,
+      "min_ngram": 3,
+      "utility_variance": 0.00039177777777777784
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 25,
+      "folds": [
+        {
+          "coverage": 0.21,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 126,
+          "short_correct": 122,
+          "short_precision": 0.9682539682539683,
+          "utility": 0.17666666666666667
+        },
+        {
+          "coverage": 0.24666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 148,
+          "short_correct": 145,
+          "short_precision": 0.9797297297297297,
+          "utility": 0.22166666666666668
+        },
+        {
+          "coverage": 0.24,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 144,
+          "short_correct": 140,
+          "short_precision": 0.9722222222222222,
+          "utility": 0.20666666666666667
+        },
+        {
+          "coverage": 0.19,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 114,
+          "short_correct": 111,
+          "short_precision": 0.9736842105263158,
+          "utility": 0.165
+        },
+        {
+          "coverage": 0.24666666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 148,
+          "short_correct": 143,
+          "short_precision": 0.9662162162162162,
+          "utility": 0.205
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.22666666666666666,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9720212693896905,
+      "mean_utility": 0.195,
+      "min_ngram": 3,
+      "utility_variance": 0.00043666666666666664
+    },
+    {
+      "bucket": 20000,
+      "dimension": 96,
+      "eligible": false,
+      "epochs": 40,
+      "folds": [
+        {
+          "coverage": 0.18,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 108,
+          "short_correct": 105,
+          "short_precision": 0.9722222222222222,
+          "utility": 0.155
+        },
+        {
+          "coverage": 0.2866666666666667,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 172,
+          "short_correct": 168,
+          "short_precision": 0.9767441860465116,
+          "utility": 0.25333333333333335
+        },
+        {
+          "coverage": 0.245,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 147,
+          "short_correct": 141,
+          "short_precision": 0.9591836734693877,
+          "utility": 0.195
+        },
+        {
+          "coverage": 0.18666666666666668,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 112,
+          "short_correct": 110,
+          "short_precision": 0.9821428571428571,
+          "utility": 0.17
+        },
+        {
+          "coverage": 0.22333333333333333,
+          "long_accepted": 0,
+          "long_correct": 0,
+          "long_precision": 0,
+          "short_accepted": 134,
+          "short_correct": 130,
+          "short_precision": 0.9701492537313433,
+          "utility": 0.19
+        }
+      ],
+      "learning_rate": 0.1,
+      "max_ngram": 6,
+      "mean_artifact_bytes": 7681693,
+      "mean_coverage": 0.22433333333333333,
+      "mean_long_precision": 0,
+      "mean_short_precision": 0.9720884385224644,
+      "mean_utility": 0.19266666666666668,
+      "min_ngram": 3,
+      "utility_variance": 0.0011251111111111115
+    }
+  ],
+  "gate_passed": false,
+  "schema": 1,
+  "selected": null
+}

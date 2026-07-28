@@ -1,0 +1,32 @@
+{
+  "corpus_sha256": "defb6a8d0e47abde93ed3036fb903b1f46417f5b012b3be8bf512b122e43f87f",
+  "filters": {
+    "diffusiondb_nsfw_max": 0.1,
+    "identity_metadata": "URLs, emails, and handles excluded",
+    "near_duplicate": "normalized token 3-gram Jaccard >= 0.85",
+    "technical_settings": "excluded",
+    "temporal_sampling": {
+      "definition": "rubric-derived cue score >= 3; not a teacher label",
+      "rows": {
+        "DiffusionDB": 1450,
+        "VideoUFO": 550
+      }
+    }
+  },
+  "rows": 5000,
+  "schema": 1,
+  "seed": 42,
+  "sources": {
+    "DiffusionDB": {
+      "license": "CC0-1.0",
+      "raw_parquet_sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+      "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+      "rows": 2000
+    },
+    "VideoUFO": {
+      "license": "CC-BY-4.0",
+      "revision": "683425832ad5b35d57d213963ecec18d5b689652",
+      "rows": 3000
+    }
+  }
+}

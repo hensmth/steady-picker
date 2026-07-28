@@ -1,0 +1,12 @@
+{
+  "hermes": "hermes",
+  "labelled_sha256": "0b04c2674e1a0e0181b880a700d3117ea27becf4fe7607098e0ac54f6f133f87",
+  "model": "gpt-5.6-sol",
+  "provider": "openai-codex",
+  "reasoning_recorded": false,
+  "schema": 1,
+  "seed": 42,
+  "ssh": false,
+  "unresolved": 12,
+  "weighted_kappa": 0.8797083669041653
+}

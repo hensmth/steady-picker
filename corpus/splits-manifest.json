@@ -1,0 +1,24 @@
+{
+  "file_sha256": {
+    "conformal_calibration": "b88507224ffd736763836c0172e7c40e62b66bf912f1f762c30ec0db9177983e",
+    "locked_test": "a3c668a827ffa1cadfc14e93024979f9bb3c1752512611ad66df8a5c99d35b44",
+    "policy_development": "bb23d40bfde9bae040d417ffab241195ac0f3c36c1e7c8359bcf5fa7a027181f",
+    "probability_calibration": "ad72de7e4c47e87d428d0836c32f0f4f355d256b8fcca87a6d08d3eb085f291a",
+    "train": "9f431373e3a83bc1060e665274ac03e5ee061956b2312690671666019cb2d664"
+  },
+  "grouping": "normalized token 3-gram Jaccard clusters",
+  "membership_sha256": "c3e3fadf74236a16248e5e9e2ea20255b5d5d6a3a7ad1446e3db1bf297db8aae",
+  "schema": 1,
+  "seed": 42,
+  "stratification": [
+    "source",
+    "final_label"
+  ],
+  "targets": {
+    "conformal_calibration": 300,
+    "locked_test": 1000,
+    "policy_development": 400,
+    "probability_calibration": 300,
+    "train": 3000
+  }
+}

@@ -1,60 +1,85 @@
-# SteadyPicker settings-v1
+# Model Card: settings-v2
 
-## Purpose
+## Model details
 
-`settings-v1.bin` is a local, network-free duration classifier for public video
-generation prompts. It is not a general language model. The surrounding
-`balanced-v1` policy owns resolution, aspect ratio, quota caps, and fallback
-behavior.
+`settings-v2` is a deterministic multinomial softmax classifier over hashed
+UTF-8 byte n-grams. It predicts the semantic video-duration labels `short`,
+`medium`, and `long`. The active policy profile maps those semantic labels to
+provider settings.
+
+Artifact format v3 records the semantic label order, n-gram configuration,
+hyperparameters, seed, source-manifest digest, training-code commit,
+temperature, class-conditional conformal quantiles, and frozen per-class
+acceptance thresholds. The loader derives the artifact SHA-256.
+
+## Intended use
+
+The model is a conservative local component for quota-aware video generation.
+It may override the safe duration only for singleton `short` or `long`
+class-conditional conformal sets that also pass frozen class-specific
+probability thresholds. `medium` is always represented by policy fallback.
+Aspect ratio and resolution are deterministic and outside the model.
+
+It is not a general text classifier, safety classifier, content moderator, or
+claim about how long a completed video objectively must be.
 
 ## Training data
 
-- 750 deduplicated prompts sampled from DiffusionDB's CC0 prompt metadata.
-- Duration labels (`d2`, `d4`, `d6`) produced offline by Hermes 0.19.0 using
-  OpenAI Codex.
-- No production prompts, account data, generated media, or credentials.
+- 3,000 VideoUFO brief captions, stratified by topic and dynamic-degree band,
+  under CC-BY-4.0.
+- 2,000 English, low-NSFW DiffusionDB prompts under CC0.
 
-The trained model is committed under `models/` and embedded in released
-binaries. The source corpus and teacher responses are excluded from Git. The
-model contains hashed byte n-gram embeddings and cannot reproduce training
-prompts.
+URLs, emails, handles, malformed text, explicit technical settings, exact
+duplicates, and normalized token 3-gram Jaccard near-duplicate clusters at
+`>=0.85` are excluded. Non-commercial and upstream-ambiguous datasets are not
+used.
 
-## Validation
+Teacher labels use the minimum normal-paced clip needed to depict all requested
+action without filler. Hermes runs locally with the exact OpenAI provider/model
+recorded in the manifest, two blind shuffled/permuted passes, and a third
+disagreement pass. Free-form teacher reasoning is not retained.
 
-A deterministic, stratified five-fold evaluation predicted every row with a
-model that had not trained on that row:
+## Evaluation protocol
 
-- 750 total held-out predictions.
-- 544 top-1 correct (72.5%).
-- 25 policy-accepted overrides (3.3% coverage).
-- 25/25 accepted overrides matched the teacher (100% selective accuracy).
+The fixed 5,000 rows are cluster-grouped and source/label stratified:
 
-Top-1 accuracy is not sufficient for unrestricted use. Production acceptance
-therefore requires a singleton conformal set, calibrated confidence of at least
-0.80, and a matching short-beat or long-sequence cue. Otherwise the engine
-returns the fixed 4-second fallback.
+- 3,000 training
+- 300 probability calibration
+- 300 class-conditional conformal calibration
+- 400 policy-threshold development
+- 1,000 permanently locked test
 
-On a separate balanced 180-row FETV sample, the final model made no accepted
-override. This is conservative domain-shift behavior, not evidence of broad
-FETV accuracy.
+Hyperparameters are selected using five-fold grouped cross-validation only
+inside training. Temperature uses only probability calibration. Conformal
+quantiles use only conformal calibration. Short/long thresholds use only policy
+development, from 0.80 through 0.995 in 0.005 steps.
 
-## Limits
+Release requires the exact locked gates documented in `scripts/evaluate_model.py`,
+all 619 FETV prompts as external evaluation, and a blinded 200-prompt
+AI-adjudicated audit. Ambiguity counts against overrides.
 
-- English cue coverage is intentionally narrow.
-- A prompt-injection phrase cannot alter policy, but explicit supported
-  settings in prompt text are honored.
-- The 100% selective result is based on only 25 accepted cross-validation
-  predictions and should be monitored as more evaluation data is collected.
-- Never call the raw classifier without the `balanced-v1` policy gate.
+## Results
 
-## Artifact
+The v0.2 training attempt failed before model selection. All 32 permitted
+hyperparameter candidates completed five grouped folds, but every candidate
+accepted zero long overrides. Consequently, zero candidates met the joint
+short/long precision constraint. See `evaluation/cross-validation.json`.
 
-Version: `v1`
+No final artifact, locked-test result, FETV result, or independent-audit result
+is claimed, and `evaluation/RELEASE_GATE_PASSED` does not exist. A provisional
+holdout inspected during engineering diagnosis is invalid for any later
+release. Retrying requires a genuinely untouched corpus and a pre-registered
+model-family revision; the criteria must not be weakened.
 
-Artifact: `models/settings-v1.bin`
+## Limitations
 
-Expected SHA-256:
+Short prompts, unusual grammar, multilingual text, adversarial instructions,
+new video domains, and distribution shift may force fallback or produce an
+incorrect label. Precision and quota protection intentionally outrank coverage.
+Price estimates are dated metadata, not billing guarantees.
 
-```text
-0358b5262d27288b7c05cbfb40ba9de6d8771f0d7f0ac085e27e3561672c9b4d
-```
+## License and attribution
+
+The model is CC-BY-4.0. Attribute VideoUFO and its authors as described in
+`THIRD_PARTY_NOTICES.md`. DiffusionDB is CC0; FETV is evaluation-only and
+CC-BY-4.0.

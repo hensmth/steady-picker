@@ -5,9 +5,12 @@ cmd/steady/steady
 # Training artifacts
 *.bin
 !models/settings-v1.bin
+!models/settings-v2.bin
 dist/
 .venv/
 .training/
+__pycache__/
+*.pyc
 coverage.out
 
 # Scratch debug files

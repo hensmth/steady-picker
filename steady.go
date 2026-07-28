@@ -1,105 +1,113 @@
 package steady
 
-import "github.com/xDarkicex/memory"
+import "math"
 
-// SetLabelNames sets the human-readable label names used in prediction sets.
-func (m *Model) SetLabelNames(names []string) {
-	if m == nil || len(names) != m.numLabels {
-		return
-	}
-	m.labelNames = names
+type workspace struct {
+	hidden []float32
+	logits []float32
+	probs  []float32
+	kinds  []int
 }
 
-// Classify runs the full classification pipeline on text. It returns a
-// calibrated prediction set with conformal coverage guarantees. An empty set
-// indicates that the text could not be classified with sufficient confidence
-// (noise or out-of-distribution).
+func (m *Model) newWorkspace() *workspace {
+	return &workspace{
+		hidden: make([]float32, m.dim),
+		logits: make([]float32, len(m.metadata.Labels)),
+		probs:  make([]float32, len(m.metadata.Labels)),
+		kinds:  make([]int, 0, len(m.metadata.Labels)),
+	}
+}
+
+func (m *Model) infer(text string, work *workspace) bool {
+	if m == nil || work == nil || text == "" {
+		return false
+	}
+	if encodeInto(text, m.table, m.bucket, m.dim, m.minN, m.maxN, work.hidden) == 0 {
+		return false
+	}
+	predictLogits(work.hidden, m.weights, m.bias, work.logits, m.dim)
+	softmax(work.logits, work.probs, m.temperature)
+	work.kinds = predictionKinds(work.probs, m.metadata.Labels, m.quantiles, work.kinds)
+	return true
+}
+
+// Classify returns an owned prediction set and is safe for concurrent use.
 func (m *Model) Classify(text string) PredictionSet {
-	if m == nil || m.scratchPool == nil {
+	if m == nil {
 		return PredictionSet{}
 	}
-	m.scratchPool.Reset()
-
-	hidden := Encode([]byte(text), m.table, m.bucket, m.dim, m.scratchPool)
-	if len(hidden) == 0 {
+	work := m.workspaces.Get().(*workspace)
+	defer m.workspaces.Put(work)
+	if !m.infer(text, work) {
 		return PredictionSet{}
 	}
-	logits := memoryMustPoolSlice[float32](m.scratchPool, m.numLabels)
-	logits = logits[:m.numLabels]
-	PredictLogits(hidden, m.weights, m.bias, logits)
-
-	calibrated := memoryMustPoolSlice[float32](m.scratchPool, m.numLabels)
-	calibrated = calibrated[:m.numLabels]
-	for i := range m.numLabels {
-		calibrated[i] = ApplyPlatt(
-			decisionScore(logits[i]),
-			m.plattA[i],
-			m.plattB[i],
-		)
+	result := PredictionSet{
+		Kinds:         make([]string, len(work.kinds)),
+		Probabilities: append([]float32(nil), work.probs...),
 	}
-	return PredictSet(calibrated, m.labelNames, m.q, m.scratchPool)
+	for i, labelIndex := range work.kinds {
+		result.Kinds[i] = m.metadata.Labels[labelIndex]
+	}
+	return result
 }
 
-// DebugResult holds raw intermediate values for debugging a classification.
+// DebugResult contains caller-owned intermediate inference values.
 type DebugResult struct {
-	Logits     []float32
-	Calibrated []float32
-	PlattA     []float32
-	PlattB     []float32
-	Q          float32
-	IsEmpty    bool
-	Kinds      []string
+	Logits        []float32 `json:"logits"`
+	Probabilities []float32 `json:"probabilities"`
+	Quantiles     []float32 `json:"quantiles"`
+	Thresholds    []float32 `json:"thresholds"`
+	Kinds         []string  `json:"kinds"`
+	IsEmpty       bool      `json:"is_empty"`
 }
 
-// ClassifyDebug runs classification and returns raw intermediate values.
+// ClassifyDebug is safe for concurrent use.
 func (m *Model) ClassifyDebug(text string) DebugResult {
-	if m == nil || m.scratchPool == nil {
+	if m == nil {
 		return DebugResult{IsEmpty: true}
 	}
-	m.scratchPool.Reset()
-
-	hidden := Encode([]byte(text), m.table, m.bucket, m.dim, m.scratchPool)
-	if len(hidden) == 0 {
+	work := m.workspaces.Get().(*workspace)
+	defer m.workspaces.Put(work)
+	if !m.infer(text, work) {
 		return DebugResult{IsEmpty: true}
 	}
-	logits := memoryMustPoolSlice[float32](m.scratchPool, m.numLabels)
-	logits = logits[:m.numLabels]
-	PredictLogits(hidden, m.weights, m.bias, logits)
-
-	calibrated := memoryMustPoolSlice[float32](m.scratchPool, m.numLabels)
-	calibrated = calibrated[:m.numLabels]
-	for i := range m.numLabels {
-		calibrated[i] = ApplyPlatt(
-			decisionScore(logits[i]),
-			m.plattA[i],
-			m.plattB[i],
-		)
+	result := DebugResult{
+		Logits:        append([]float32(nil), work.logits...),
+		Probabilities: append([]float32(nil), work.probs...),
+		Quantiles:     append([]float32(nil), m.quantiles...),
+		Thresholds:    append([]float32(nil), m.thresholds...),
+		Kinds:         make([]string, len(work.kinds)),
 	}
-	ps := PredictSet(calibrated, m.labelNames, m.q, m.scratchPool)
-
-	n := m.numLabels
-	lcopy := memoryMustPoolSlice[float32](m.scratchPool, n)
-	lcopy = lcopy[:n]
-	copy(lcopy, logits)
-	ccopy := memoryMustPoolSlice[float32](m.scratchPool, n)
-	ccopy = ccopy[:n]
-	copy(ccopy, calibrated)
-	acopy := memoryMustPoolSlice[float32](m.scratchPool, n)
-	acopy = acopy[:n]
-	copy(acopy, m.plattA)
-	bcopy := memoryMustPoolSlice[float32](m.scratchPool, n)
-	bcopy = bcopy[:n]
-	copy(bcopy, m.plattB)
-
-	return DebugResult{
-		Logits: lcopy, Calibrated: ccopy, PlattA: acopy, PlattB: bcopy,
-		Q: m.q, IsEmpty: ps.IsEmpty(), Kinds: ps.Kinds,
+	for i, labelIndex := range work.kinds {
+		result.Kinds[i] = m.metadata.Labels[labelIndex]
 	}
+	return result
 }
 
-// memoryMustPoolSlice is an internal helper that allocates a typed slice from
-// the pool. Panics if allocation fails.
-func memoryMustPoolSlice[T any](pool *memory.Pool, cap int) []T {
-	s := memory.MustPoolSlice[T](pool, cap)
-	return s
+func (m *Model) pickDecision(text string) (string, float32, bool) {
+	if m == nil {
+		return "", 0, false
+	}
+	work := m.workspaces.Get().(*workspace)
+	defer m.workspaces.Put(work)
+	if !m.infer(text, work) || len(work.kinds) != 1 {
+		return "", 0, false
+	}
+	index := work.kinds[0]
+	label := m.metadata.Labels[index]
+	if (label != "short" && label != "long") || work.probs[index] < m.thresholds[index] {
+		return "", 0, false
+	}
+	return label, work.probs[index], true
+}
+
+func bestProbability(probabilities []float32) (int, float32) {
+	index := -1
+	best := float32(-math.MaxFloat32)
+	for i, probability := range probabilities {
+		if probability > best {
+			index, best = i, probability
+		}
+	}
+	return index, best
 }

@@ -1,52 +1,54 @@
-name: release
+name: draft-release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact v0.2.x version (release stays draft)
+        required: true
+        type: string
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: 1.25.7
-          cache: true
+      - run: test "${{ inputs.version }}" = "v0.2.0"
+      - run: test -f evaluation/RELEASE_GATE_PASSED
       - run: go test ./...
+      - run: go test -race ./...
       - run: go vet ./...
+      - run: go run ./cmd/steady-picker health
+      - name: Reject bootstrap or ungoverned artifacts
+        run: |
+          go run ./cmd/steady-picker inspect-model > /tmp/model.json
+          ! grep -q 'bootstrap-not-for-release' /tmp/model.json
+          ! grep -q '"source_manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"' /tmp/model.json
 
   build:
-    needs: test
+    needs: verify
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - goos: linux
-            goarch: amd64
-            output: steady-picker-linux-amd64
-          - goos: linux
-            goarch: arm64
-            output: steady-picker-linux-arm64
-          - goos: darwin
-            goarch: amd64
-            output: steady-picker-darwin-amd64
-          - goos: darwin
-            goarch: arm64
-            output: steady-picker-darwin-arm64
-          - goos: windows
-            goarch: amd64
-            output: steady-picker-windows-amd64.exe
+          - {goos: linux, goarch: amd64, output: steady-picker-linux-amd64}
+          - {goos: linux, goarch: arm64, output: steady-picker-linux-arm64}
+          - {goos: darwin, goarch: amd64, output: steady-picker-darwin-amd64}
+          - {goos: darwin, goarch: arm64, output: steady-picker-darwin-arm64}
+          - {goos: windows, goarch: amd64, output: steady-picker-windows-amd64.exe}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: 1.25.7
-          cache: true
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -54,34 +56,51 @@ jobs:
           CGO_ENABLED: "0"
         run: >-
           go build -trimpath
-          -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}"
+          -ldflags="-s -w -X main.version=${{ inputs.version }}"
           -o "dist/${{ matrix.output }}"
           ./cmd/steady-picker
-      - uses: actions/upload-artifact@v7
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: dist/${{ matrix.output }}.spdx.json
+      - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: dist/${{ matrix.output }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.output }}
-          path: dist/${{ matrix.output }}
+          path: dist/*
 
-  publish:
+  draft:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           merge-multiple: true
-      - name: Add model and checksums
+      - name: Add governed artifacts and checksums
         run: |
-          cp models/settings-v1.bin dist/settings-v1.bin
+          cp models/settings-v2.bin dist/settings-v2.bin
+          cp corpus/labelled.jsonl corpus/membership.jsonl corpus/source-manifest.json corpus/teacher-manifest.json dist/
+          cp corpus/DATASET_CARD.md evaluation/report.json MODEL_CARD.md THIRD_PARTY_NOTICES.md dist/
           cd dist
-          sha256sum steady-picker-* settings-v1.bin > SHA256SUMS
-      - name: Publish release
+          sha256sum * > SHA256SUMS
+      - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: |
+            dist/settings-v2.bin
+            dist/labelled.jsonl
+            dist/SHA256SUMS
+      - name: Create draft only
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          gh release create "${GITHUB_REF_NAME}"
-          dist/*
+          gh release create "${{ inputs.version }}" dist/*
+          --draft
+          --verify-tag
           --repo "${GITHUB_REPOSITORY}"
-          --title "SteadyPicker ${GITHUB_REF_NAME}"
-          --generate-notes
+          --title "SteadyPicker ${{ inputs.version }}"
+          --notes-file RELEASE_NOTES.md
