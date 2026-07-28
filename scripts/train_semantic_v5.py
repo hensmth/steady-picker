@@ -507,8 +507,8 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--training-code-commit", required=True)
-    parser.add_argument("--cv-epochs", type=int, default=3)
-    parser.add_argument("--final-epochs", type=int, default=5)
+    parser.add_argument("--cv-epochs", type=int, default=12)
+    parser.add_argument("--final-epochs", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
