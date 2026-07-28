@@ -55,6 +55,16 @@ func TestArtifactRoundTripAndDerivedIdentity(t *testing.T) {
 	}
 }
 
+func TestMarshalRejectsOversizedMetadata(t *testing.T) {
+	model, _ := testModel(t)
+	model.metadata.ArtifactSHA256 = ""
+	model.metadata.TrainingCodeCommit = strings.Repeat("x", maxMetadataSize)
+	if _, err := marshalModel(model); err == nil ||
+		!strings.Contains(err.Error(), "metadata is too large") {
+		t.Fatalf("marshal oversized metadata error = %v", err)
+	}
+}
+
 func TestEncoderSoftmaxAndConformalPrimitives(t *testing.T) {
 	table := deterministicValues(32*8, 42)
 	first := make([]float32, 8)

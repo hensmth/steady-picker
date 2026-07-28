@@ -238,15 +238,23 @@ func marshalModel(m *Model) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(meta) == 0 || len(meta) > maxMetadataSize {
+		return nil, errors.New("steady: model metadata is too large")
+	}
 	count, ok := checkedPayloadFloats(m.bucket, m.dim, len(metadata.Labels))
 	if !ok {
 		return nil, errors.New("steady: model is too large")
 	}
-	out := make([]byte, modelHeaderSize+len(meta)+count*4)
+	payloadBytes := int64(count) * 4
+	totalBytes := int64(modelHeaderSize) + int64(len(meta)) + payloadBytes
+	if payloadBytes <= 0 || totalBytes > int64(maxArtifactSize) {
+		return nil, errors.New("steady: model artifact is too large")
+	}
+	out := make([]byte, int(totalBytes))
 	binary.LittleEndian.PutUint32(out[:4], modelMagic)
 	binary.LittleEndian.PutUint32(out[4:8], modelVersion)
 	binary.LittleEndian.PutUint32(out[8:12], uint32(len(meta)))
-	binary.LittleEndian.PutUint64(out[16:24], uint64(count*4))
+	binary.LittleEndian.PutUint64(out[16:24], uint64(payloadBytes))
 	copy(out[modelHeaderSize:], meta)
 	pos := modelHeaderSize + len(meta)
 	for _, group := range [][]float32{m.table, m.weights, m.bias, {m.temperature}, m.quantiles, m.thresholds} {
