@@ -137,7 +137,7 @@ func Train(cfg TrainConfig) error {
 		wordMaxN:         3,
 		temporalFeatures: temporalFeatureCount,
 		metadata: Metadata{
-			ArtifactFormat:       int(modelVersion),
+			ArtifactFormat:       int(hybridVersion),
 			ModelID:              "settings-v2",
 			Task:                 "video-duration-selection",
 			Labels:               labels,

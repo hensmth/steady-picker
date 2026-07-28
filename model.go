@@ -18,7 +18,8 @@ import (
 
 const (
 	modelMagic      uint32 = 0x53544459 // STDY
-	modelVersion    uint32 = 4
+	modelVersion    uint32 = 5
+	hybridVersion   uint32 = 4
 	legacyVersion   uint32 = 3
 	modelHeaderSize        = 32
 	maxArtifactSize        = 64 << 20
@@ -52,6 +53,19 @@ type Metadata struct {
 	WordMaxN             int       `json:"word_max_ngram,omitempty"`
 	TemporalFeatures     int       `json:"temporal_features,omitempty"`
 	PositiveClassWeights []float64 `json:"positive_class_weights,omitempty"`
+	Tokenizer            string    `json:"tokenizer,omitempty"`
+	Vocabulary           []string  `json:"vocabulary,omitempty"`
+	MaxTokens            int       `json:"max_tokens,omitempty"`
+	Layers               int       `json:"layers,omitempty"`
+	AttentionHeads       int       `json:"attention_heads,omitempty"`
+	HiddenSize           int       `json:"hidden_size,omitempty"`
+	IntermediateSize     int       `json:"intermediate_size,omitempty"`
+	Quantization         string    `json:"quantization,omitempty"`
+	AuxiliaryHeads       []string  `json:"auxiliary_heads,omitempty"`
+	TeacherEncoder       string    `json:"teacher_encoder,omitempty"`
+	TrainingProvider     string    `json:"training_provider,omitempty"`
+	TrainingModel        string    `json:"training_model,omitempty"`
+	TrainingEffort       string    `json:"training_effort,omitempty"`
 }
 
 // Model contains immutable model weights and a pool of independent workspaces.
@@ -73,6 +87,7 @@ type Model struct {
 	wordMinN         int
 	wordMaxN         int
 	temporalFeatures int
+	semantic         *semanticModel
 }
 
 // Metadata returns a caller-owned copy of the artifact metadata.
@@ -84,10 +99,12 @@ func (m *Model) Metadata() Metadata {
 	out.Labels = slices.Clone(m.metadata.Labels)
 	out.Heads = slices.Clone(m.metadata.Heads)
 	out.PositiveClassWeights = slices.Clone(m.metadata.PositiveClassWeights)
+	out.Vocabulary = slices.Clone(m.metadata.Vocabulary)
+	out.AuxiliaryHeads = slices.Clone(m.metadata.AuxiliaryHeads)
 	return out
 }
 
-// Load reads a strict v3 or v4 artifact from path.
+// Load reads a strict v3, v4, or v5 artifact from path.
 func Load(path string) (*Model, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -111,7 +128,7 @@ func Load(path string) (*Model, error) {
 	return LoadBytes(data)
 }
 
-// LoadBytes parses a strict v3 or v4 artifact and copies all model data.
+// LoadBytes parses a strict v3, v4, or v5 artifact and copies all model data.
 func LoadBytes(input []byte) (*Model, error) {
 	if len(input) > maxArtifactSize {
 		return nil, fmt.Errorf("steady: artifact exceeds %d-byte limit", maxArtifactSize)
@@ -129,7 +146,7 @@ func LoadBytes(input []byte) (*Model, error) {
 	if version == 2 {
 		return nil, errors.New("steady: artifact format v2 is unsupported; use steady-picker v0.1 or retrain as v4")
 	}
-	if version != legacyVersion && version != modelVersion {
+	if version != legacyVersion && version != hybridVersion && version != modelVersion {
 		return nil, fmt.Errorf("steady: unsupported artifact format v%d", version)
 	}
 	if binary.LittleEndian.Uint32(input[12:16]) != 0 ||
@@ -163,6 +180,18 @@ func LoadBytes(input []byte) (*Model, error) {
 
 	nLabels := len(metadata.Labels)
 	if version == modelVersion {
+		m, err := loadSemanticV5(
+			input[modelHeaderSize+metadataLen:], metadata,
+		)
+		if err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(input)
+		m.metadata.ArtifactSHA256 = hex.EncodeToString(sum[:])
+		m.workspaces.New = func() any { return m.newWorkspace() }
+		return m, nil
+	}
+	if version == hybridVersion {
 		floatCount, ok := checkedV4PayloadFloats(
 			metadata.Bucket, metadata.Dimension, metadata.TemporalFeatures, len(metadata.Heads),
 		)
@@ -253,7 +282,9 @@ func validateMetadata(m Metadata) error {
 	if m.ArtifactSHA256 != "" {
 		return errors.New("steady: artifact SHA-256 is loader-derived and must not appear in metadata")
 	}
-	if (m.ArtifactFormat != int(legacyVersion) && m.ArtifactFormat != int(modelVersion)) ||
+	if (m.ArtifactFormat != int(legacyVersion) &&
+		m.ArtifactFormat != int(hybridVersion) &&
+		m.ArtifactFormat != int(modelVersion)) ||
 		m.ModelID != "settings-v2" ||
 		m.Task != "video-duration-selection" {
 		return errors.New("steady: invalid artifact identity metadata")
@@ -261,7 +292,40 @@ func validateMetadata(m Metadata) error {
 	if !slices.Equal(m.Labels, []string{"short", "medium", "long"}) {
 		return errors.New("steady: semantic label order must be exactly short, medium, long")
 	}
-	if m.ArtifactFormat == int(modelVersion) {
+	switch m.ArtifactFormat {
+	case int(modelVersion):
+		if m.ModelFamily != "distilled-semantic-transformer-v1" ||
+			m.FeatureSchema != "wordpiece-transformer-temporal-aux-v1" ||
+			!slices.Equal(m.Heads, []string{"short", "long"}) ||
+			m.Tokenizer != "wordpiece-v1" ||
+			len(m.Vocabulary) < 5 || len(m.Vocabulary) > 8192 ||
+			m.MaxTokens != 96 || m.Layers != 2 ||
+			m.AttentionHeads != 4 || m.HiddenSize != 128 ||
+			m.IntermediateSize != 512 ||
+			m.Quantization != "int8-per-output-channel-f32-layernorm" ||
+			!slices.Equal(m.AuxiliaryHeads, []string{
+				"beats_1", "beats_2", "beats_3",
+				"ordered", "transformation", "dependent_actions",
+			}) ||
+			m.TeacherEncoder == "" || m.TrainingProvider == "" ||
+			m.TrainingModel == "" || m.TrainingEffort == "" {
+			return errors.New("steady: invalid v5 semantic model metadata")
+		}
+		if m.Bucket != 1 || m.Dimension != m.HiddenSize ||
+			m.MinN != 1 || m.MaxN != 1 ||
+			m.WordMinN != 0 || m.WordMaxN != 0 ||
+			m.TemporalFeatures != 0 || len(m.PositiveClassWeights) != 2 {
+			return errors.New("steady: invalid v5 compatibility dimensions")
+		}
+		if err := validateVocabulary(m.Vocabulary); err != nil {
+			return err
+		}
+		for _, weight := range m.PositiveClassWeights {
+			if weight <= 0 || math.IsNaN(weight) || math.IsInf(weight, 0) {
+				return errors.New("steady: invalid v5 positive class weight")
+			}
+		}
+	case int(hybridVersion):
 		if m.ModelFamily != "dual-head-hybrid-v1" ||
 			m.FeatureSchema != "hashed-char-word-linear+embedding+temporal-v1" ||
 			!slices.Equal(m.Heads, []string{"short", "long"}) ||
@@ -270,15 +334,31 @@ func validateMetadata(m Metadata) error {
 			len(m.PositiveClassWeights) != 2 {
 			return errors.New("steady: invalid v4 model-family metadata")
 		}
+		if m.Tokenizer != "" || len(m.Vocabulary) != 0 ||
+			m.MaxTokens != 0 || m.Layers != 0 || m.AttentionHeads != 0 ||
+			m.HiddenSize != 0 || m.IntermediateSize != 0 ||
+			m.Quantization != "" || len(m.AuxiliaryHeads) != 0 ||
+			m.TeacherEncoder != "" || m.TrainingProvider != "" ||
+			m.TrainingModel != "" || m.TrainingEffort != "" {
+			return errors.New("steady: v4 metadata contains v5 fields")
+		}
 		for _, weight := range m.PositiveClassWeights {
 			if weight <= 0 || math.IsNaN(weight) || math.IsInf(weight, 0) {
 				return errors.New("steady: invalid v4 positive class weight")
 			}
 		}
-	} else if m.ModelFamily != "" || m.FeatureSchema != "" || len(m.Heads) != 0 ||
-		m.WordMinN != 0 || m.WordMaxN != 0 || m.TemporalFeatures != 0 ||
-		len(m.PositiveClassWeights) != 0 {
-		return errors.New("steady: v3 metadata contains v4 fields")
+	case int(legacyVersion):
+		if m.ModelFamily != "" || m.FeatureSchema != "" || len(m.Heads) != 0 ||
+			m.WordMinN != 0 || m.WordMaxN != 0 || m.TemporalFeatures != 0 ||
+			len(m.PositiveClassWeights) != 0 || m.Tokenizer != "" ||
+			len(m.Vocabulary) != 0 || m.MaxTokens != 0 || m.Layers != 0 ||
+			m.AttentionHeads != 0 || m.HiddenSize != 0 ||
+			m.IntermediateSize != 0 || m.Quantization != "" ||
+			len(m.AuxiliaryHeads) != 0 || m.TeacherEncoder != "" ||
+			m.TrainingProvider != "" || m.TrainingModel != "" ||
+			m.TrainingEffort != "" {
+			return errors.New("steady: v3 metadata contains newer-format fields")
+		}
 	}
 	if m.PolicyCompatibility == "" || m.SourceManifestSHA256 == "" || m.TrainingCodeCommit == "" {
 		return errors.New("steady: incomplete provenance metadata")
@@ -336,6 +416,9 @@ func checkedPayloadFloats(bucket, dim, labels int) (int, bool) {
 }
 
 func marshalModel(m *Model) ([]byte, error) {
+	if m != nil && m.metadata.ArtifactFormat == int(modelVersion) {
+		return marshalSemanticModel(m)
+	}
 	metadata := m.metadata
 	metadata.ArtifactSHA256 = ""
 	meta, err := json.Marshal(metadata)
@@ -348,7 +431,7 @@ func marshalModel(m *Model) ([]byte, error) {
 	var count int
 	var ok bool
 	var groups [][]float32
-	if metadata.ArtifactFormat == int(modelVersion) {
+	if metadata.ArtifactFormat == int(hybridVersion) {
 		count, ok = checkedV4PayloadFloats(
 			m.bucket, m.dim, m.temporalFeatures, len(metadata.Heads),
 		)

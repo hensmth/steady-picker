@@ -9,14 +9,25 @@ type workspace struct {
 	kinds          []int
 	featureIndices []int
 	temporal       []float32
+	textBytes      []byte
+	tokenIDs       []int
+	semanticX      []float32
+	semanticY      []float32
+	semanticQ      []float32
+	semanticK      []float32
+	semanticV      []float32
+	semanticHidden []float32
+	semanticFFN    []float32
+	attention      []float32
 }
 
 func (m *Model) newWorkspace() *workspace {
 	outputs := len(m.metadata.Labels)
-	if m.metadata.ArtifactFormat == int(modelVersion) {
+	if m.metadata.ArtifactFormat == int(hybridVersion) ||
+		m.metadata.ArtifactFormat == int(modelVersion) {
 		outputs = len(m.metadata.Heads)
 	}
-	return &workspace{
+	work := &workspace{
 		hidden:         make([]float32, m.dim),
 		logits:         make([]float32, outputs),
 		probs:          make([]float32, outputs),
@@ -24,6 +35,21 @@ func (m *Model) newWorkspace() *workspace {
 		featureIndices: make([]int, 0, 8192),
 		temporal:       make([]float32, m.temporalFeatures),
 	}
+	if m.metadata.ArtifactFormat == int(modelVersion) {
+		tokens := m.semantic.maxTokens
+		hidden := m.semantic.hidden
+		work.textBytes = make([]byte, 0, maxPromptBytes)
+		work.tokenIDs = make([]int, tokens)
+		work.semanticX = make([]float32, tokens*hidden)
+		work.semanticY = make([]float32, tokens*hidden)
+		work.semanticQ = make([]float32, tokens*hidden)
+		work.semanticK = make([]float32, tokens*hidden)
+		work.semanticV = make([]float32, tokens*hidden)
+		work.semanticHidden = make([]float32, hidden)
+		work.semanticFFN = make([]float32, m.semantic.intermediate)
+		work.attention = make([]float32, tokens)
+	}
+	return work
 }
 
 func (m *Model) infer(text string, work *workspace) bool {
@@ -31,6 +57,24 @@ func (m *Model) infer(text string, work *workspace) bool {
 		return false
 	}
 	if m.metadata.ArtifactFormat == int(modelVersion) {
+		if !m.semanticPredict(text, work) {
+			return false
+		}
+		work.kinds = work.kinds[:0]
+		shortAccepted := m.semanticHeadAccepted(0, work.probs[0])
+		longAccepted := m.semanticHeadAccepted(1, work.probs[1], text)
+		if shortAccepted != longAccepted {
+			if shortAccepted {
+				work.kinds = append(work.kinds, 0)
+			} else {
+				work.kinds = append(work.kinds, 2)
+			}
+		} else {
+			work.kinds = append(work.kinds, 1)
+		}
+		return true
+	}
+	if m.metadata.ArtifactFormat == int(hybridVersion) {
 		work.featureIndices = v4Predict(
 			text, m.table, m.weights, m.bias, m.temperatures,
 			m.bucket, m.dim, m.temporalFeatures, m.minN, m.maxN,
@@ -60,6 +104,18 @@ func (m *Model) infer(text string, work *workspace) bool {
 	return true
 }
 
+func (m *Model) semanticHeadAccepted(head int, probability float32, text ...string) bool {
+	if head < 0 || head >= len(m.thresholds) || head*2+1 >= len(m.quantiles) {
+		return false
+	}
+	positiveIncluded := 1-probability <= m.quantiles[head*2]
+	negativeIncluded := probability <= m.quantiles[head*2+1]
+	if head == 1 && (len(text) != 1 || !longCueEligible(text[0])) {
+		return false
+	}
+	return positiveIncluded && !negativeIncluded && probability >= m.thresholds[head]
+}
+
 func (m *Model) v4HeadAccepted(head int, probability float32, text string) bool {
 	if head < 0 || head >= len(m.thresholds) || head*2+1 >= len(m.quantiles) {
 		return false
@@ -85,7 +141,8 @@ func (m *Model) Classify(text string) PredictionSet {
 	result := PredictionSet{
 		Kinds: make([]string, len(work.kinds)),
 	}
-	if m.metadata.ArtifactFormat == int(modelVersion) {
+	if m.metadata.ArtifactFormat == int(hybridVersion) ||
+		m.metadata.ArtifactFormat == int(modelVersion) {
 		medium := max(float32(0), 1-work.probs[0]-work.probs[1])
 		total := work.probs[0] + medium + work.probs[1]
 		result.Probabilities = []float32{
@@ -144,7 +201,8 @@ func (m *Model) pickDecision(text string) (string, float32, bool) {
 	}
 	index := work.kinds[0]
 	label := m.metadata.Labels[index]
-	if m.metadata.ArtifactFormat == int(modelVersion) {
+	if m.metadata.ArtifactFormat == int(hybridVersion) ||
+		m.metadata.ArtifactFormat == int(modelVersion) {
 		switch index {
 		case 0:
 			return "short", work.probs[0], true

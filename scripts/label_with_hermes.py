@@ -159,8 +159,16 @@ def pass_votes(
     pending = [row for row in shuffled if int(row["id"]) not in votes]
     batches = [
         (
-            offset // args.batch_size,
-            [{"id": row["id"], "prompt": row["prompt"]} for row in pending[offset : offset + args.batch_size]],
+            hashlib.sha256(
+                ",".join(
+                    str(row["id"])
+                    for row in pending[offset : offset + args.batch_size]
+                ).encode()
+            ).hexdigest()[:16],
+            [
+                {"id": row["id"], "prompt": row["prompt"]}
+                for row in pending[offset : offset + args.batch_size]
+            ],
         )
         for offset in range(0, len(pending), args.batch_size)
     ]
@@ -173,7 +181,7 @@ def pass_votes(
                     batch,
                     labels,
                     args,
-                    f"pass-{pass_number}-batch-{batch_index:04d}",
+                    f"pass-{pass_number}-batch-{batch_index}",
                 )
                 for batch_index, batch in wave
             ]
