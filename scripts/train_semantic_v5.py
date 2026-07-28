@@ -9,6 +9,7 @@ import hashlib
 import itertools
 import json
 import os
+import platform
 import random
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from sentence_transformers import InputExample, SentenceTransformer, losses
+import sentence_transformers
 from torch.utils.data import DataLoader
 
 from semantic_training import (
@@ -707,6 +709,11 @@ def main() -> None:
         "training_model": teacher_manifest["model"],
         "training_effort": teacher_manifest["reasoning_effort"],
         "training_backend": "pytorch-cpu-deterministic",
+        "training_toolchain": (
+            f"python={platform.python_version()};torch={torch.__version__};"
+            f"numpy={np.__version__};"
+            f"sentence-transformers={sentence_transformers.__version__}"
+        ),
     }
     artifact = export_v5(
         args.artifact,

@@ -249,11 +249,12 @@ func semanticTestArtifact(t testing.TB, durationBias []float32) []byte {
 			"beats_1", "beats_2", "beats_3",
 			"ordered", "transformation", "dependent_actions",
 		},
-		TeacherEncoder:   "sentence-transformers/paraphrase-MiniLM-L3-v2",
-		TrainingProvider: "openai-codex",
-		TrainingModel:    "gpt-5.6-sol",
-		TrainingEffort:   "ultra",
-		TrainingBackend:  "pytorch-cpu-deterministic",
+		TeacherEncoder:    "sentence-transformers/paraphrase-MiniLM-L3-v2",
+		TrainingProvider:  "openai-codex",
+		TrainingModel:     "gpt-5.6-sol",
+		TrainingEffort:    "ultra",
+		TrainingBackend:   "pytorch-cpu-deterministic",
+		TrainingToolchain: "python=3.13;torch=2.13.0;numpy=2.2.6;sentence-transformers=5.1.0",
 	}
 	zeroMatrix := func(rows, columns int, bias bool) quantizedMatrix {
 		matrix := quantizedMatrix{
