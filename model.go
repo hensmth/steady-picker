@@ -66,6 +66,7 @@ type Metadata struct {
 	TrainingProvider     string    `json:"training_provider,omitempty"`
 	TrainingModel        string    `json:"training_model,omitempty"`
 	TrainingEffort       string    `json:"training_effort,omitempty"`
+	TrainingBackend      string    `json:"training_backend,omitempty"`
 }
 
 // Model contains immutable model weights and a pool of independent workspaces.
@@ -308,7 +309,8 @@ func validateMetadata(m Metadata) error {
 				"ordered", "transformation", "dependent_actions",
 			}) ||
 			m.TeacherEncoder == "" || m.TrainingProvider == "" ||
-			m.TrainingModel == "" || m.TrainingEffort == "" {
+			m.TrainingModel == "" || m.TrainingEffort == "" ||
+			m.TrainingBackend != "pytorch-cpu-deterministic" {
 			return errors.New("steady: invalid v5 semantic model metadata")
 		}
 		if m.Bucket != 1 || m.Dimension != m.HiddenSize ||
@@ -339,7 +341,8 @@ func validateMetadata(m Metadata) error {
 			m.HiddenSize != 0 || m.IntermediateSize != 0 ||
 			m.Quantization != "" || len(m.AuxiliaryHeads) != 0 ||
 			m.TeacherEncoder != "" || m.TrainingProvider != "" ||
-			m.TrainingModel != "" || m.TrainingEffort != "" {
+			m.TrainingModel != "" || m.TrainingEffort != "" ||
+			m.TrainingBackend != "" {
 			return errors.New("steady: v4 metadata contains v5 fields")
 		}
 		for _, weight := range m.PositiveClassWeights {
@@ -356,7 +359,7 @@ func validateMetadata(m Metadata) error {
 			m.IntermediateSize != 0 || m.Quantization != "" ||
 			len(m.AuxiliaryHeads) != 0 || m.TeacherEncoder != "" ||
 			m.TrainingProvider != "" || m.TrainingModel != "" ||
-			m.TrainingEffort != "" {
+			m.TrainingEffort != "" || m.TrainingBackend != "" {
 			return errors.New("steady: v3 metadata contains newer-format fields")
 		}
 	}

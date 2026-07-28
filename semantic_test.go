@@ -205,6 +205,7 @@ func semanticTestArtifact(t testing.TB, durationBias []float32) []byte {
 		TrainingProvider: "openai-codex",
 		TrainingModel:    "gpt-5.6-sol",
 		TrainingEffort:   "ultra",
+		TrainingBackend:  "pytorch-cpu-deterministic",
 	}
 	zeroMatrix := func(rows, columns int, bias bool) quantizedMatrix {
 		matrix := quantizedMatrix{

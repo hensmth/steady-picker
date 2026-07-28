@@ -18,9 +18,9 @@ All integers are little-endian. The 32-byte header is:
 The metadata fixes the architecture at two Transformer layers, hidden size 128,
 four attention heads, FFN size 512, an 8,192-token WordPiece vocabulary, and a
 96-token maximum. It also carries semantic label/head order, calibration,
-policy compatibility, teacher/training provenance, source-manifest digest, and
-training-code commit. The artifact SHA-256 is derived by the loader and is never
-accepted from metadata.
+policy compatibility, teacher/training provenance (including the deterministic
+CPU backend), source-manifest digest, and training-code commit. The artifact
+SHA-256 is derived by the loader and is never accepted from metadata.
 
 The payload is a fixed sequence:
 

@@ -259,7 +259,14 @@ def main() -> None:
         action="store_true",
         help="run three complete structured passes and require 3/3 label agreement",
     )
+    parser.add_argument(
+        "--sealed-output",
+        action="store_true",
+        help="omit label-derived aggregate statistics from manifest/stdout",
+    )
     args = parser.parse_args()
+    if args.sealed_output and not args.structured_unanimous:
+        raise RuntimeError("--sealed-output requires --structured-unanimous")
     if not 1 <= args.workers <= 4:
         raise RuntimeError("--workers must be between 1 and 4")
     rows = [json.loads(line) for line in args.input.read_text(encoding="utf-8").splitlines()]
@@ -410,9 +417,6 @@ def main() -> None:
         "hermes": args.hermes,
         "ssh": bool(args.ssh_host),
         "seed": args.seed,
-        "weighted_kappa": kappa,
-        "pairwise_weighted_kappas": kappas,
-        "unresolved": unresolved,
         "labelling_policy": (
             "three structured blind passes; 3/3 label agreement required"
             if args.structured_unanimous
@@ -429,6 +433,14 @@ def main() -> None:
             "reasoning_tokens": sum(int(row.get("reasoning_tokens", 0)) for row in usage_rows),
         },
     }
+    if not args.sealed_output:
+        manifest.update(
+            {
+                "weighted_kappa": kappa,
+                "pairwise_weighted_kappas": kappas,
+                "unresolved": unresolved,
+            }
+        )
     args.manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(manifest, sort_keys=True))
 

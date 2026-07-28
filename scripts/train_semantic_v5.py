@@ -8,6 +8,7 @@ import collections
 import hashlib
 import itertools
 import json
+import os
 import random
 import subprocess
 import sys
@@ -500,6 +501,9 @@ def main() -> None:
     parser.add_argument("--split-dir", type=Path, required=True)
     parser.add_argument("--source-manifest", type=Path, required=True)
     parser.add_argument("--teacher-manifest", type=Path, required=True)
+    parser.add_argument(
+        "--sealed-support-validation", type=Path, required=True
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--training-code-commit", required=True)
@@ -535,6 +539,14 @@ def main() -> None:
         or teacher_manifest["reasoning_effort"] != "ultra"
     ):
         raise RuntimeError("teacher provenance does not match the frozen plan")
+    sealed_support = json.loads(
+        args.sealed_support_validation.read_text(encoding="utf-8")
+    )
+    if (
+        sealed_support.get("row_integrity") is not True
+        or sealed_support.get("unanimous_override_support_sufficient") is not True
+    ):
+        raise RuntimeError("sealed holdout support validation did not pass")
 
     vocabulary_path = args.output_dir / "vocabulary.json"
     if vocabulary_path.is_file():
@@ -552,9 +564,8 @@ def main() -> None:
     for split_rows in splits.values():
         for row in split_rows:
             row["_semantic_token_ids"] = tokens_by_id[int(row["id"])]
-    device = torch.device(
-        "mps" if torch.backends.mps.is_available() else "cpu"
-    )
+    device = torch.device("cpu")
+    torch.set_num_threads(max(1, min(8, os.cpu_count() or 1)))
     torch.use_deterministic_algorithms(True)
     teacher = fit_teacher(
         splits["train"], args.output_dir, str(device), args.seed
@@ -608,6 +619,9 @@ def main() -> None:
         "schema": 1,
         "grid_candidates": len(GRID),
         "eligible_candidates": len(eligible),
+        "sealed_support_validation_sha256": hashlib.sha256(
+            args.sealed_support_validation.read_bytes()
+        ).hexdigest(),
         "frozen_cv_gates": {
             "short_precision": 0.95,
             "long_precision": 0.98,
@@ -692,6 +706,7 @@ def main() -> None:
         "training_provider": teacher_manifest["provider"],
         "training_model": teacher_manifest["model"],
         "training_effort": teacher_manifest["reasoning_effort"],
+        "training_backend": "pytorch-cpu-deterministic",
     }
     artifact = export_v5(
         args.artifact,
