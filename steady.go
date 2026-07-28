@@ -61,7 +61,8 @@ func (m *Model) infer(text string, work *workspace) bool {
 			return false
 		}
 		work.kinds = work.kinds[:0]
-		shortAccepted := m.semanticHeadAccepted(0, work.probs[0])
+		shortAccepted := m.allowsLearnedShort() &&
+			m.semanticHeadAccepted(0, work.probs[0])
 		longAccepted := m.semanticHeadAccepted(1, work.probs[1], text)
 		if shortAccepted != longAccepted {
 			if shortAccepted {
@@ -102,6 +103,11 @@ func (m *Model) infer(text string, work *workspace) bool {
 	softmax(work.logits, work.probs, m.temperature)
 	work.kinds = predictionKinds(work.probs, m.metadata.Labels, m.quantiles, work.kinds)
 	return true
+}
+
+func (m *Model) allowsLearnedShort() bool {
+	return m != nil &&
+		m.metadata.DecisionPolicy != DecisionPolicyLongOnlyPragmaticV2
 }
 
 func (m *Model) semanticHeadAccepted(head int, probability float32, text ...string) bool {

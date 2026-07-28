@@ -120,13 +120,18 @@ python scripts/train_semantic_v5.py \
   --sealed-support-validation work/sealed-support.json \
   --output-dir work/semantic-training \
   --artifact work/settings-v2.bin \
-  --training-code-commit "$(git rev-parse HEAD)"
+  --training-code-commit "$(git rev-parse HEAD)" \
+  --decision-policy long-only-pragmatic-v2 \
+  --recompute-cv
 ```
 
-If grouped CV fails, stop: the holdout remains sealed. If it passes, run the
-locked, FETV, and blinded audit evaluation with `scripts/evaluate_model.py`.
-Publication still requires the release marker generated only by that final
-evaluation.
+The pragmatic run reproduces frozen candidate 8 only. It must match pooled
+evidence 23/29 and folds 4/6, 5/6, 3/4, 6/8, and 5/5 exactly; otherwise it
+stops while the holdout remains sealed. Learned short decisions are disabled.
+The final long threshold maximizes policy-development coverage subject to 75%
+precision. If selection passes, run the locked, FETV, and blinded audit using
+`--release-policy long-only-pragmatic-v2`. Publication still requires
+`evaluation/LONG_ONLY_PRAGMATIC_V2_PASSED`.
 
 Engineering gates:
 

@@ -27,6 +27,8 @@ const (
 	maxLabels              = 32
 )
 
+const DecisionPolicyLongOnlyPragmaticV2 = "long-only-pragmatic-v2"
+
 // Metadata is the canonical, immutable provenance carried by an artifact.
 type Metadata struct {
 	ArtifactFormat       int       `json:"artifact_format"`
@@ -68,6 +70,7 @@ type Metadata struct {
 	TrainingEffort       string    `json:"training_effort,omitempty"`
 	TrainingBackend      string    `json:"training_backend,omitempty"`
 	TrainingToolchain    string    `json:"training_toolchain,omitempty"`
+	DecisionPolicy       string    `json:"decision_policy,omitempty"`
 }
 
 // Model contains immutable model weights and a pool of independent workspaces.
@@ -315,6 +318,10 @@ func validateMetadata(m Metadata) error {
 			m.TrainingToolchain == "" || len(m.TrainingToolchain) > 512 {
 			return errors.New("steady: invalid v5 semantic model metadata")
 		}
+		if m.DecisionPolicy != "" &&
+			m.DecisionPolicy != DecisionPolicyLongOnlyPragmaticV2 {
+			return errors.New("steady: invalid v5 decision policy")
+		}
 		if m.Bucket != 1 || m.Dimension != m.HiddenSize ||
 			m.MinN != 1 || m.MaxN != 1 ||
 			m.WordMinN != 0 || m.WordMaxN != 0 ||
@@ -347,6 +354,9 @@ func validateMetadata(m Metadata) error {
 			m.TrainingBackend != "" || m.TrainingToolchain != "" {
 			return errors.New("steady: v4 metadata contains v5 fields")
 		}
+		if m.DecisionPolicy != "" {
+			return errors.New("steady: v4 metadata contains v5 decision policy")
+		}
 		for _, weight := range m.PositiveClassWeights {
 			if weight <= 0 || math.IsNaN(weight) || math.IsInf(weight, 0) {
 				return errors.New("steady: invalid v4 positive class weight")
@@ -362,7 +372,7 @@ func validateMetadata(m Metadata) error {
 			len(m.AuxiliaryHeads) != 0 || m.TeacherEncoder != "" ||
 			m.TrainingProvider != "" || m.TrainingModel != "" ||
 			m.TrainingEffort != "" || m.TrainingBackend != "" ||
-			m.TrainingToolchain != "" {
+			m.TrainingToolchain != "" || m.DecisionPolicy != "" {
 			return errors.New("steady: v3 metadata contains newer-format fields")
 		}
 	}

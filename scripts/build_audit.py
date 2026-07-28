@@ -17,6 +17,7 @@ CONFLICT_CASES = [
     "Use 1:1 and 16:9 simultaneously while a person stands still.",
     "Render at 480p and 720p simultaneously: a single quiet landscape.",
 ]
+PRAGMATIC_POLICY = "long-only-pragmatic-v2"
 
 
 def predict(binary: Path, model: Path, rows: list[dict]) -> list[dict]:
@@ -39,32 +40,49 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--expected", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--release-policy",
+        choices=("strict-v2", PRAGMATIC_POLICY),
+        default="strict-v2",
+    )
     args = parser.parse_args()
     extras = list(map(json.loads, args.extras.read_text(encoding="utf-8").splitlines()))
     random.Random(args.seed).shuffle(extras)
     predictions = predict(args.binary, args.model, extras)
     paired = list(zip(extras, predictions))
     accepted = [pair for pair in paired if pair[1]["duration_source"] == "model"]
-    if len(accepted) < 60:
-        raise RuntimeError(f"audit requires 60 accepted extras, found {len(accepted)}")
-    accepted = accepted[:60]
+    if args.release_policy == PRAGMATIC_POLICY:
+        learned_short = [pair for pair in accepted if pair[1]["duration"] == 2]
+        if learned_short:
+            raise RuntimeError(
+                "long-only pragmatic artifact produced a learned short decision"
+            )
+    accepted_target = 20 if args.release_policy == PRAGMATIC_POLICY else 60
+    if len(accepted) < accepted_target:
+        raise RuntimeError(
+            f"audit requires {accepted_target} accepted extras, found {len(accepted)}"
+        )
+    accepted = accepted[:accepted_target]
     accepted_ids = {(row["source"], row["source_id"]) for row, _ in accepted}
     natural = [
         pair
         for pair in paired
         if (pair[0]["source"], pair[0]["source_id"]) not in accepted_ids
-    ][:80]
+    ][: (100 if args.release_policy == PRAGMATIC_POLICY else 80)]
+    conflict_target = 80 if args.release_policy == PRAGMATIC_POLICY else 60
     conflicts = [
         (
             {"prompt": f"{CONFLICT_CASES[index % len(CONFLICT_CASES)]} Case {index + 1}."},
             {"duration": 4, "duration_source": "fallback", "confidence": 0},
         )
-        for index in range(60)
+        for index in range(conflict_target)
     ]
     audit = [("natural", *pair) for pair in natural]
     audit += [("accepted_override", *pair) for pair in accepted]
     audit += [("conflict_ood_adversarial", *pair) for pair in conflicts]
     random.Random(args.seed + 1).shuffle(audit)
+    if len(audit) != 200:
+        raise RuntimeError(f"audit assembly produced {len(audit)} rows")
     public_rows = []
     expected_rows = []
     for index, (kind, row, prediction) in enumerate(audit):

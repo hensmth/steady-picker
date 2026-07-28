@@ -149,9 +149,10 @@ func health(args []string) {
 	fmt.Printf(
 		"{\"status\":%q,\"ready\":%t,\"model_version\":%q,"+
 			"\"artifact_format\":%d,\"policy_version\":%q,"+
-			"\"artifact_sha256\":%q}\n",
+			"\"decision_policy\":%q,\"artifact_sha256\":%q}\n",
 		status, ready, metadata.ModelID, metadata.ArtifactFormat,
-		steady.ProfileQuotaSafeV2, metadata.ArtifactSHA256,
+		steady.ProfileQuotaSafeV2, metadata.DecisionPolicy,
+		metadata.ArtifactSHA256,
 	)
 }
 

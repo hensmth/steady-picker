@@ -44,6 +44,61 @@ func TestSemanticV5RoundTripAndDecisions(t *testing.T) {
 	}
 }
 
+func TestSemanticV5LongOnlyPolicyDisablesLearnedShort(t *testing.T) {
+	shortModel, err := LoadBytes(semanticTestArtifact(t, []float32{8, -8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shortModel.metadata.ArtifactSHA256 = ""
+	shortModel.metadata.DecisionPolicy = DecisionPolicyLongOnlyPragmaticV2
+	artifact, err := marshalSemanticModel(shortModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shortModel, err = LoadBytes(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	classified := shortModel.Classify("A bird hops once.")
+	if len(classified.Kinds) != 1 || classified.Kinds[0] != "medium" {
+		t.Fatalf("long-only short classification = %#v", classified)
+	}
+	result, err := PickSettings(shortModel, QuotaSafeProfile(), PickRequest{
+		Prompt: "A bird hops once.", Mode: TextToVideo,
+	})
+	if err != nil || result.Duration != 4 || result.DurationSource != "fallback" {
+		t.Fatalf("long-only short policy = %+v %v", result, err)
+	}
+	explicit, err := PickSettings(shortModel, QuotaSafeProfile(), PickRequest{
+		Prompt: "A bird hops once.", Mode: TextToVideo, Duration: 2,
+	})
+	if err != nil || explicit.Duration != 2 || explicit.DurationSource != "explicit" {
+		t.Fatalf("long-only explicit short = %+v %v", explicit, err)
+	}
+
+	longModel, err := LoadBytes(semanticTestArtifact(t, []float32{-8, 8}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	longModel.metadata.ArtifactSHA256 = ""
+	longModel.metadata.DecisionPolicy = DecisionPolicyLongOnlyPragmaticV2
+	artifact, err = marshalSemanticModel(longModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	longModel, err = LoadBytes(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = PickSettings(longModel, QuotaSafeProfile(), PickRequest{
+		Prompt: "First a seed sprouts, then it blooms, and finally wilts.",
+		Mode:   TextToVideo,
+	})
+	if err != nil || result.Duration != 6 || result.DurationSource != "model" {
+		t.Fatalf("long-only long policy = %+v %v", result, err)
+	}
+}
+
 func TestSemanticV5RejectsMalformedPayload(t *testing.T) {
 	artifact := semanticTestArtifact(t, []float32{8, -8})
 	if _, err := LoadBytes(artifact[:len(artifact)-1]); err == nil ||

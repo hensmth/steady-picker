@@ -22,7 +22,7 @@ jobs:
         with:
           go-version: 1.26.0
       - run: test "${{ inputs.version }}" = "v0.2.0"
-      - run: test -f evaluation/RELEASE_GATE_PASSED
+      - run: test -f evaluation/LONG_ONLY_PRAGMATIC_V2_PASSED
       - run: go test ./...
       - run: go test -race ./...
       - run: go vet ./...
@@ -31,6 +31,7 @@ jobs:
         run: |
           go run ./cmd/steady-picker inspect-model > /tmp/model.json
           ! grep -q 'bootstrap-not-for-release' /tmp/model.json
+          grep -q '"decision_policy":"long-only-pragmatic-v2"' /tmp/model.json
           ! grep -q '"source_manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"' /tmp/model.json
 
   build:

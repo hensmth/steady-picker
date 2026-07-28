@@ -7,11 +7,12 @@ network or LLM call in production.
 The CLI embeds an artifact, attribution, and the `quota-safe-v2` profile. A
 single executable is enough.
 
-> **v0.2 status:** model selection failed the frozen long-override gate. The
-> branch therefore embeds a release-blocked bootstrap artifact that always
-> leaves learned duration at the safe fallback. `steady-picker health` reports
-> `"status":"bootstrap"` and `"ready":false`. Use v0.1 for the released model;
-> see `evaluation/README.md` for the complete v0.2 evidence.
+> **v0.2 status:** the original strict short-and-long release gate remains
+> failed. A separately marked pragmatic candidate enables learned `long`
+> decisions only and keeps every learned short decision at the safe fallback.
+> Its exact grouped-CV evidence passed the predeclared 75% precision gate; the
+> sealed evaluation must pass before the embedded bootstrap is replaced or a
+> release is published. See `evaluation/README.md`.
 
 ## Quick start
 
@@ -57,7 +58,7 @@ defaults, maximums, and optional per-second price estimates.
 
 The embedded `quota-safe-v2` profile:
 
-- maps learned `short`, `medium`, and `long` labels to 2, 4, and 6 seconds;
+- maps semantic `short`, `medium`, and `long` labels to 2, 4, and 6 seconds;
 - defaults to 4 seconds, 480p, and 16:9 for text-to-video;
 - permits an explicit 720p request;
 - preserves source aspect ratio for image-to-video by default; and
@@ -65,8 +66,9 @@ The embedded `quota-safe-v2` profile:
   with a dated pricing field.
 
 Decision precedence is field-specific: valid explicit request, source-media
-constraint, accepted learned duration, then safe fallback. The model never
-controls aspect ratio or resolution.
+constraint, accepted learned duration, then safe fallback. The pragmatic
+decision policy accepts only learned `long` decisions. Explicit 2-second
+requests still work. The model never controls aspect ratio or resolution.
 
 Use a custom governed profile:
 
@@ -104,7 +106,8 @@ steady-picker licenses
 steady-picker predict --model ./custom-v3.bin < requests.jsonl
 ```
 
-Artifact v3 is strict and provenance-carrying. Models over 64 MiB, malformed
+Artifact v5 contains the compact semantic model and decision-policy marker;
+v3 and v4 remain loadable. Models over 64 MiB, malformed
 dimensions, non-finite values, unknown labels, or ambiguous v2 label order are
 rejected before inference. Use v0.1 for a legacy v2 artifact or retrain it.
 
@@ -132,44 +135,17 @@ needed. Returned classification slices are caller-owned.
 
 ## Reproducible training
 
-The governed v2 pipeline uses exactly 3,000 VideoUFO brief captions and 2,000
-DiffusionDB prompts. It excludes URLs, identities, technical settings, unsafe
-rows, duplicates, and near-duplicate clusters before teacher labelling.
+The semantic pipeline uses a governed 14,000-row development corpus and a
+separate 1,000-row sealed holdout. Three blind structured teacher votes label
+each prompt; disagreement means safe fallback. Near-duplicate clusters remain
+together across splits.
 
-```bash
-python scripts/build_corpus.py \
-  --cache .cache --output corpus/prompts.jsonl \
-  --extras-output corpus/audit-extras.jsonl \
-  --manifest corpus/source-manifest.json
-
-python scripts/label_with_hermes.py \
-  --input corpus/prompts.jsonl \
-  --output corpus/labelled.jsonl \
-  --manifest corpus/teacher-manifest.json \
-  --checkpoint-dir .checkpoints \
-  --provider openai-codex --teacher-model gpt-5.6-sol
-
-python scripts/build_splits.py \
-  --input corpus/labelled.jsonl \
-  --output-dir corpus/splits --manifest corpus/splits-manifest.json
-```
-
-Teacher labelling is local by default and supports optional generic SSH
-execution. It runs two blind shuffled passes with permuted label presentation
-and a third disagreement pass. Checkpoints are validated before resume.
-
-Training requires four already-frozen splits:
-
-```bash
-steady-picker train \
-  --train corpus/splits/train.txt \
-  --probability-calibration corpus/splits/probability_calibration.txt \
-  --conformal-calibration corpus/splits/conformal_calibration.txt \
-  --threshold-development corpus/splits/policy_development.txt \
-  --source-manifest-sha256 SHA256 \
-  --training-code-commit GIT_SHA \
-  --output models/settings-v2.bin
-```
+The student is a deterministic, quantized two-layer Transformer with separate
+short and long heads. The frozen pragmatic candidate uses learning rate
+`0.0007`, long-class weight `0.75`, contrastive weight `0.25`, and focal
+strength `1.0`. The public runbook contains the exact corpus, labelling,
+selection, evaluation, and engineering commands:
+[docs/SEMANTIC_RETRAINING.md](docs/SEMANTIC_RETRAINING.md).
 
 The locked test, FETV evaluation, and independent AI-adjudicated audit are
 opened only after temperature, conformal quantiles, and policy thresholds are

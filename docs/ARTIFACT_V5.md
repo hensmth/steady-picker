@@ -22,6 +22,11 @@ policy compatibility, teacher/training provenance (including the deterministic
 CPU backend), source-manifest digest, and training-code commit. The artifact
 SHA-256 is derived by the loader and is never accepted from metadata.
 
+The optional `decision_policy` field is restricted to
+`long-only-pragmatic-v2`. When present, the runtime suppresses learned
+`short` decisions while retaining explicit two-second requests and accepted
+learned `long` decisions. Formats v3 and v4 cannot set this field.
+
 The payload is a fixed sequence:
 
 1. token embeddings, position embeddings, and embedding layer normalization;

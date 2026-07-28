@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Quantized v5 semantic artifacts with a two-layer Transformer, structured
+  temporal heads, and v3/v4 loading compatibility.
+- A separately identified `long-only-pragmatic-v2` decision policy and release
+  gate.
 - Strict provenance-carrying v3 artifacts and embedded `settings-v2`.
 - Configurable capability/budget profiles and `quota-safe-v2`.
 - Field-specific decision sources, stable reasons, cost estimates, and dated
@@ -19,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Learned short decisions are suppressed by the pragmatic policy; explicit
+  two-second requests remain available.
 - Replaced unsafe mapping and custom allocation with ordinary immutable Go
   slices and independent pooled workspaces.
 - Learned labels are provider-neutral `short`, `medium`, and `long`.

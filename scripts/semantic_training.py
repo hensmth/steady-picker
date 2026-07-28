@@ -530,6 +530,7 @@ def export_v5(
     temperatures: np.ndarray,
     quantiles: np.ndarray,
     thresholds: np.ndarray,
+    decision_policy: str = "",
 ) -> bytes:
     metadata = {
         **metadata,
@@ -557,6 +558,7 @@ def export_v5(
         "intermediate_size": INTERMEDIATE,
         "quantization": "int8-per-output-channel-f32-layernorm",
         "auxiliary_heads": AUXILIARY_HEADS,
+        **({"decision_policy": decision_policy} if decision_policy else {}),
     }
     metadata_bytes = json.dumps(
         metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False
