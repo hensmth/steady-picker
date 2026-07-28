@@ -276,7 +276,9 @@ def fit_teacher(
         batch_size=32,
         generator=torch.Generator().manual_seed(seed),
     )
-    model.fit(
+    # The pinned SentenceTransformers release keeps this DataLoader-based path
+    # for deterministic loss training without its optional datasets dependency.
+    model.old_fit(
         train_objectives=[(loader, losses.CosineSimilarityLoss(model))],
         epochs=1,
         warmup_steps=max(1, len(loader) // 10),
