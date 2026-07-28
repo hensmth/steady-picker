@@ -30,7 +30,9 @@ python scripts/build_semantic_corpus.py \
   --exclude prior-corpus.jsonl
 ```
 
-Run three complete blind structured passes over development:
+Start one external two-hour wall-clock deadline, then run three complete blind
+structured passes over development. Pass only the remaining budget to each
+invocation; the values below reserve ten minutes for the sealed support pass:
 
 ```bash
 python scripts/label_with_hermes.py \
@@ -43,7 +45,7 @@ python scripts/label_with_hermes.py \
   --provider openai-codex \
   --teacher-model gpt-5.6-sol \
   --reasoning-effort ultra \
-  --deadline-seconds 7200 \
+  --deadline-seconds 6600 \
   --expected-count 14000 \
   --require-provider-evidence \
   --structured-unanimous
@@ -63,7 +65,7 @@ python scripts/label_with_hermes.py \
   --provider openai-codex \
   --teacher-model gpt-5.6-sol \
   --reasoning-effort ultra \
-  --deadline-seconds 7200 \
+  --deadline-seconds 600 \
   --expected-count 1000 \
   --require-provider-evidence \
   --structured-unanimous \
@@ -75,8 +77,12 @@ python scripts/validate_sealed_support.py \
   --output work/sealed-support.json
 ```
 
-Build splits and run the fixed 16-candidate, five-fold selection. The training
-script does not accept a holdout-label path:
+Stop before splitting or model selection unless the support validator reports
+`row_integrity: true` and `unanimous_override_support_sufficient: true`. The
+validator never emits class counts or examples.
+
+Only after that gate passes, build splits and run the fixed 16-candidate,
+five-fold selection. The training script does not accept a holdout-label path:
 
 ```bash
 python scripts/build_semantic_splits.py \
